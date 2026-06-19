@@ -16,4 +16,19 @@ public enum Config {
     public static let gridSpacing: CGFloat = 28
     public static let iconSize: CGFloat = 64
     public static let contentPadding: CGFloat = 40
+    public static let searchFieldMaxWidth: CGFloat = 480
+    public static let searchFieldVerticalPadding: CGFloat = 10
+
+    // Folders (user-created, persisted).
+    public static let appSupportFolderName = "Lancher"
+    public static let foldersFileName = "folders.json"
+    public static let defaultFolderName = "New Folder"
+    /// Side length of each of the (up to four) mini icons in a folder tile's preview.
+    public static let folderPreviewIconSize: CGFloat = 22
+
+    // Now Playing widget.
+    public static let nowPlayingPollInterval: TimeInterval = 3
+    public static let nowPlayingWidgetWidth: CGFloat = 300
+    public static let nowPlayingArtworkSize: CGFloat = 56
+    public static let nowPlayingCornerRadius: CGFloat = 14
 }

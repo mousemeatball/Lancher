@@ -44,6 +44,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSPrincipalClass</key><string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key><string>Lancher — local test build</string>
+	<key>NSAppleEventsUsageDescription</key><string>Lancher reads and controls the current track in Apple Music and Spotify to show the Now Playing widget.</string>
 </dict>
 </plist>
 PLIST

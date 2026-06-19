@@ -15,11 +15,13 @@ public final class AppEnvironment {
 
     public init(
         discovery: AppDiscovering = AppDiscoveryService(),
-        launcher: AppLaunching = WorkspaceAppLauncher()
+        launcher: AppLaunching = WorkspaceAppLauncher(),
+        mediaController: NowPlayingProviding = AppleScriptMediaController()
     ) {
         let apps = discovery.discoverApps()
         let viewModel = LauncherViewModel(apps: apps, launcher: launcher)
-        self.controller = LauncherWindowController(viewModel: viewModel)
+        let nowPlaying = NowPlayingViewModel(provider: mediaController)
+        self.controller = LauncherWindowController(viewModel: viewModel, nowPlaying: nowPlaying)
 
         // Summon from anywhere with ⌥Space. Falls back to the menu-bar item if registration fails.
         self.hotKey = GlobalHotKey { [weak self] in

@@ -16,9 +16,11 @@ private final class LauncherPanel: NSPanel {
 public final class LauncherWindowController {
     private var panel: LauncherPanel?
     private let viewModel: LauncherViewModel
+    private let nowPlaying: NowPlayingViewModel
 
-    public init(viewModel: LauncherViewModel) {
+    public init(viewModel: LauncherViewModel, nowPlaying: NowPlayingViewModel) {
         self.viewModel = viewModel
+        self.nowPlaying = nowPlaying
         self.viewModel.onClose = { [weak self] in self?.hide() }
     }
 
@@ -37,12 +39,14 @@ public final class LauncherWindowController {
         if let screen = screenUnderCursor() {
             panel.setFrame(screen.frame, display: true)
         }
-        viewModel.query = ""
+        viewModel.resetPresentation()
+        nowPlaying.startPolling()
         NSApp.activate()
         panel.makeKeyAndOrderFront(nil)
     }
 
     public func hide() {
+        nowPlaying.stopPolling()
         panel?.orderOut(nil)
     }
 
@@ -59,7 +63,9 @@ public final class LauncherWindowController {
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.hidesOnDeactivate = true
-        panel.contentView = NSHostingView(rootView: LauncherView(viewModel: viewModel))
+        panel.contentView = NSHostingView(
+            rootView: LauncherView(viewModel: viewModel, nowPlaying: nowPlaying)
+        )
         return panel
     }
 
