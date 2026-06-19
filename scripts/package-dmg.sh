@@ -35,6 +35,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<key>CFBundleDisplayName</key><string>${APP_NAME}</string>
 	<key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
 	<key>CFBundleExecutable</key><string>${APP_NAME}</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleVersion</key><string>${BUILD_NUMBER}</string>
@@ -48,6 +49,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+echo "==> Generating app icon…"
+swift "$(dirname "$0")/make-icon.swift" "$APP/Contents/Resources/AppIcon.icns"
 
 echo "==> Ad-hoc signing…"
 codesign --force --sign - "$APP"
