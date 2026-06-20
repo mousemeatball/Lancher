@@ -1,0 +1,196 @@
+================================================================================
+LANCHER — BUILD PROMPT / SPEC
+A native macOS app launcher (Launchpad replacement) — a LaunchMe competitor.
+This file is the reusable prompt used to build the app. Hand it to an AI coding
+agent (or a developer) to regenerate, continue, or extend the project.
+================================================================================
+
+--------------------------------------------------------------------------------
+0. ONE-LINE GOAL
+--------------------------------------------------------------------------------
+Build "Lancher": a customizable, full-screen menu-bar app launcher for macOS 26
+Tahoe that brings back (and improves on) Launchpad — competing with LaunchMe
+(launchmeapp.com). Ship it as a double-clickable .dmg, openable in VS Code, with
+a built-in Debug Bridge so a human or an AI agent can drive and inspect the
+running app over HTTP while building.
+
+--------------------------------------------------------------------------------
+1. POSITIONING — LaunchMe FEATURE INVENTORY (what to match) + OUR EDGE
+--------------------------------------------------------------------------------
+LaunchMe is a paid Launchpad replacement for macOS 26 Tahoe. Match these:
+  - Full-screen app grid; free layout; multi-page; multi-display.
+  - Custom folders (color / emoji / cover image).
+  - Adjustable icon sizes; custom app icons; hide apps; hide titles.
+  - Liquid Glass theme (native macOS 26 glass materials).
+  - Wallpapers: static, dynamic HEIC (light/dark), live video (mp4/mov/avi/mkv,
+    paused when hidden), plus dynamic Sun and dynamic Weather scenes.
+  - Widgets: photo, shaped photo, GIF, animations, affirmation, calendar.
+  - Spaces: save layout+wallpaper+widgets+folders as a named Space, switch by
+    hotkey or on a day/time schedule.
+  - Workflows: open many apps + Finder files/folders at once from one preset.
+  - Hot corners; 3-finger trackpad gesture to summon.
+  - Calculator in the search bar; file search w/ copy/delete/preview; clipboard
+    history; 18 languages; iCloud sync; AI features ("coming soon").
+  - Freemium: Free / LITE / PRO / lifetime.
+
+OUR DIFFERENTIATORS (chosen for v1):
+  - Spaces + Workflows (headline).
+  - Wallpapers + Widgets (headline).
+  - Now Playing widget (Music/Spotify) built in early — LaunchMe lacks it.
+  - Debug Bridge — drive/inspect the app over loopback HTTP (dev superpower).
+  - Future edge: an AI command bar (natural-language launch) via the Claude API.
+
+ORIGINALITY / LEGAL: built only from public feature *descriptions*. No LaunchMe
+code, icons, screenshots, or trademarks. Original name + from-scratch icon.
+
+--------------------------------------------------------------------------------
+2. DECISIONS (locked)
+--------------------------------------------------------------------------------
+  - Start fresh (old prototype preserved on branch archive/v1).
+  - Deployment target: macOS 26 Tahoe (native Liquid Glass).
+  - Distribution: local-only, ad-hoc signed .dmg (no Apple Developer account).
+  - Stack: Swift + SwiftUI + AppKit, Swift Package Manager (NOT Electron/Tauri).
+  - Non-sandboxed (direct .dmg, not App Store) so it can enumerate/launch apps.
+
+--------------------------------------------------------------------------------
+3. ENVIRONMENT CONSTRAINTS (this Mac)
+--------------------------------------------------------------------------------
+  - Swift 6.x, macOS 26 Tahoe. ONLY Command Line Tools — NO full Xcode.
+  - => Build with `swift build` (no .xcodeproj / xcodebuild).
+  - => Tests use Swift Testing (not XCTest). Use scripts/test.sh, which adds the
+     Swift-Testing framework search path + lib_TestingInterop.dylib rpath under
+     CLT, and falls back to plain `swift test` when full Xcode is present.
+  - => Package the .app by hand: assemble bundle -> `codesign --sign -` (ad-hoc)
+     -> `hdiutil` (see scripts/package-dmg.sh).
+  - gh CLI is installed and authenticated; repo: github.com/mousemeatball/Lancher.
+
+--------------------------------------------------------------------------------
+4. CODING RULES (must follow)
+--------------------------------------------------------------------------------
+  - Immutability: never mutate; return new copies (value types with `with`-style
+    helpers). Folders/Spaces/Workflows are immutable structs.
+  - One type per file. Files < 800 lines, functions < 50 lines, nesting < 4.
+  - Repository pattern behind protocols for DI/testing (e.g. AppDiscovering,
+    AppLaunching, FolderStoring).
+  - MVVM: pure, testable view models; SwiftUI views are thin.
+  - No magic numbers/strings — put them in Shared/Config.swift.
+  - Validate at boundaries (Debug Bridge input, weather API, file paths).
+  - Handle errors explicitly; surface user-facing errors via the view model.
+  - Target 80%+ unit-test coverage on LauncherKit logic.
+
+--------------------------------------------------------------------------------
+5. ARCHITECTURE / MODULE LAYOUT (SwiftPM)
+--------------------------------------------------------------------------------
+Package.swift            swift-tools 6.0, platforms [.macOS("26.0")]
+Sources/
+  Lancher/               thin executable: main.swift + AppDelegate (LSUIElement
+                         menu-bar agent app; sets .accessory activation policy)
+  LauncherKit/           testable library — all models/services/viewmodels/views
+    Apps/                AppItem, AppDiscovering + AppDiscoveryService, AppLaunching
+                         + WorkspaceAppLauncher
+    Launcher/            LauncherViewModel, LauncherView, AppGridItemView,
+                         FolderGridItemView, LauncherGridEntry, KeyablePanel,
+                         LauncherWindowController (full-screen NSPanel)
+    Folders/             Folder, FolderList, FolderStoring + FolderStore (JSON)
+    Spaces/              Space, SpaceStore, SpaceScheduler              [PLANNED]
+    Workflows/           Workflow, WorkflowRunner                       [PLANNED]
+    Wallpapers/          WallpaperEngine + Static/HEIC/Video/Sun/Weather[PLANNED]
+    Widgets/             Widget protocol + NowPlaying/Clock/Weather/... [PLANNED]
+    Theme/               LiquidGlass materials (native + fallback)      [PLANNED]
+    Input/               GlobalHotKey (Carbon), HotCorners, GestureMonitor
+    Persistence/         JSON stores under Application Support/Lancher
+    Debug/               Log, DebugProtocol, HTTPMessage, DebugBridge
+    App/                 AppEnvironment (composition root)
+    Shared/              Config (all constants)
+Tests/LauncherKitTests/  Swift Testing
+scripts/                 run.sh, test.sh, package-dmg.sh, make-icon.swift
+BUILD_PROMPT.txt         this file
+README.md
+
+--------------------------------------------------------------------------------
+6. STEP-BY-STEP BUILD GUIDE (phases). Each phase: `swift build` clean,
+   scripts/test.sh green, and a Debug Bridge curl check once Phase 2 lands.
+--------------------------------------------------------------------------------
+Phase 0  Reset & scaffold. archive/v1 branch; Package.swift (.macOS 26); module
+         dirs; Config; run/test/package scripts; empty LSUIElement menu-bar app.
+         Publish to GitHub (push archive/v1 then main).                  [DONE]
+Phase 1  Core launcher: AppItem + AppDiscoveryService (scan dirs, parse
+         Info.plist, dedupe, sort; do NOT pass .skipsHiddenFiles or you lose
+         Safari, a hidden Cryptex symlink); WorkspaceAppLauncher; LauncherViewModel
+         (pure search filter); full-screen NSPanel on the display under the cursor;
+         SwiftUI grid; dismiss on Esc/click-away/app-switch/launch; ⌥Space Carbon
+         GlobalHotKey (no Accessibility permission).                      [DONE]
+Phase 2  Debug Bridge + logging (BROUGHT EARLY so all later phases are testable).
+         os.Logger categories + append-only file log; loopback-only HTTP server
+         gated by --debug/LANCHER_DEBUG, token-authed; GET /state, POST /command,
+         GET /screenshot. See section 7.                                 [DONE]
+Phase 3  Folders: immutable Folder/FolderList (app in <=1 folder; resolve against
+         live app set); FolderStore (JSON); view-model ops; folder tiles, drill-in
+         (Esc backs out), right-click menus (New/Add/Remove/Rename/Delete).[DONE]
+Phase 4  Liquid Glass theme: native macOS 26 glass materials for overlay/search/
+         folders/widgets; NSVisualEffectView fallback; Light/Dark/Tinted icons.
+Phase 5  Wallpapers: WallpaperEngine + Static (png/jpg/heic), Dynamic HEIC,
+         Video (AVPlayer, loop, PAUSE WHEN HIDDEN), Sun (computed from time+loc),
+         Weather (Open-Meteo, no API key, + CoreLocation; validate+cache). Blur
+         overlay. Verify each via bridge set-wallpaper + /screenshot.
+Phase 6  Widgets: Widget protocol + corner host; Now Playing (Music/Spotify via
+         public AppleScript; one-time Automation prompt), Clock, Weather, Photo,
+         Affirmation, Calendar. Multiple sizes; persisted placement.
+Phase 7  Spaces: immutable Space bundling layout+wallpaper+folders+widgets+size;
+         SpaceStore; SpaceScheduler (hotkey + day/time, injected clock); switcher.
+Phase 8  Workflows: immutable Workflow (apps + files/folders + URLs, custom icon);
+         WorkflowRunner opens them in sequence; launchable tiles.
+Phase 9  Hot corners; 3-finger gesture (Accessibility, graceful degrade); full
+         Preferences window (hotkey, icon size, theme, login item, dock/menubar,
+         wallpaper, spaces, workflows). Also expose set-pref via the bridge.
+Phase 10 Package to .dmg: make-icon.swift (from-scratch .icns) + package-dmg.sh
+         (release build -> .app w/ Info.plist + usage strings -> ad-hoc codesign
+         -> hdiutil w/ /Applications symlink) -> dist/Lancher-<version>.dmg. [DONE]
+Phase 11 Polish: README; verify no third-party assets/marks; pause work when
+         hidden; 80%+ coverage. BUILD_PROMPT.txt (this file).            [DONE]
+
+Backlog: calculator-in-search; file search w/ copy-delete-preview; clipboard
+history; AI command bar (Claude API); iCloud sync; localization; freemium tiers;
+notarization (only if sharing beyond this Mac).
+
+--------------------------------------------------------------------------------
+7. DEBUG BRIDGE — HOW TO INTERACT WITH / DEBUG THE RUNNING APP
+--------------------------------------------------------------------------------
+Run with the bridge enabled:
+    ./scripts/run.sh --debug          # or: LANCHER_DEBUG=1 ./scripts/run.sh
+The base URL + access token are printed to stdout AND written to:
+    ~/Library/Application Support/Lancher/debug-bridge.json
+Loopback only (127.0.0.1:53127), token required on every request.
+
+    INFO="$HOME/Library/Application Support/Lancher/debug-bridge.json"
+    TOKEN=$(grep -oE '[0-9a-f]{32}' "$INFO" | head -1)
+    BASE=http://127.0.0.1:53127
+    H="x-lancher-token: $TOKEN"
+
+    curl -s "$BASE/state" -H "$H"                                  # JSON snapshot
+    curl -s -XPOST "$BASE/command" -H "$H" -d '{"cmd":"summon"}'
+    curl -s -XPOST "$BASE/command" -H "$H" -d '{"cmd":"search","q":"safari"}'
+    curl -s -XPOST "$BASE/command" -H "$H" -d '{"cmd":"launch","bundleID":"com.apple.Safari"}'
+    curl -s -XPOST "$BASE/command" -H "$H" -d '{"cmd":"create-folder","name":"Browsers","q":"safari"}'
+    curl -s "$BASE/screenshot" -H "$H" -o /tmp/lancher.png        # PNG of window
+
+Commands today: summon|show, dismiss|hide, toggle, search(q), launch(bundleID|name),
+create-folder(name, optional q/bundleID seed), open-folder(name), clear-folders.
+Add a new command by extending DebugCommand + AppEnvironment.debugPerform, and add
+fields to DebugState as features land. Logs: tail -f the file log above, or
+`log stream --predicate 'subsystem == "com.lancher.app"'`.
+
+--------------------------------------------------------------------------------
+8. BUILD / RUN / PACKAGE / OPEN IN VS CODE
+--------------------------------------------------------------------------------
+    swift build                 # compile
+    ./scripts/test.sh           # run tests (Swift Testing; CLT-aware)
+    ./scripts/run.sh [--debug]  # run from source (menu-bar grid icon; ⌥Space)
+    ./scripts/package-dmg.sh    # build dist/Lancher-<version>.dmg
+    open -a "Visual Studio Code" .            # open the project
+First launch of a *downloaded* copy on another Mac: right-click -> Open (ad-hoc,
+not notarized). Locally built/installed copies run without that step.
+
+================================================================================
+END
+================================================================================
