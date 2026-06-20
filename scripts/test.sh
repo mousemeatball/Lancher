@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Run the test suite.
 #
-# Under Command Line Tools (no full Xcode), Swift Testing ships as a framework that is not
-# on the default search path, and its private lib_TestingInterop.dylib must be on the rpath.
-# With full Xcode installed, plain `swift test` resolves everything — so we detect and adapt.
+# This machine may have only the Command Line Tools (no full Xcode). Under CLT, Swift Testing
+# ships as a framework that is not on the default search path, and its private
+# lib_TestingInterop.dylib must be on the rpath. With full Xcode installed, plain `swift test`
+# resolves everything — so we detect and adapt.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

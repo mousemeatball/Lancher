@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Package Lancher into a .app bundle and a .dmg for local testing.
+# Package Lancher into a .app bundle and a .dmg for local installation.
 #
-# The app is ad-hoc signed (not notarized). That is fine for running on THIS Mac: a
-# locally created .dmg has no quarantine flag, so Gatekeeper won't block it. Moving it to
-# another Mac would require notarization.
+# The app is ad-hoc signed (not notarized). That is fine for running on THIS Mac: a locally
+# created .dmg has no quarantine flag, so Gatekeeper won't block it. Moving it to another Mac
+# would require right-click -> Open the first time (or notarization).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -11,6 +11,7 @@ APP_NAME="Lancher"
 BUNDLE_ID="com.lancher.app"
 VERSION="0.1.0"
 BUILD_NUMBER="1"
+MIN_OS="26.0"
 
 echo "==> Building release…"
 swift build -c release --product "$APP_NAME"
@@ -40,18 +41,24 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleVersion</key><string>${BUILD_NUMBER}</string>
 	<key>CFBundleShortVersionString</key><string>${VERSION}</string>
-	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>LSMinimumSystemVersion</key><string>${MIN_OS}</string>
 	<key>LSUIElement</key><true/>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSPrincipalClass</key><string>NSApplication</string>
-	<key>NSHumanReadableCopyright</key><string>Lancher — local test build</string>
-	<key>NSAppleEventsUsageDescription</key><string>Lancher reads and controls the current track in Apple Music and Spotify to show the Now Playing widget.</string>
+	<key>NSHumanReadableCopyright</key><string>${APP_NAME} — local build</string>
+	<key>NSAppleEventsUsageDescription</key><string>${APP_NAME} reads and controls the current track in Apple Music and Spotify to show the Now Playing widget.</string>
+	<key>NSLocationWhenInUseUsageDescription</key><string>${APP_NAME} uses your location for dynamic Sun and Weather wallpapers.</string>
 </dict>
 </plist>
 PLIST
 
-echo "==> Generating app icon…"
-swift "$(dirname "$0")/make-icon.swift" "$APP/Contents/Resources/AppIcon.icns"
+# Icon is generated from scratch in Phase 10. Until make-icon.swift exists, ship without one.
+if [ -f scripts/make-icon.swift ]; then
+  echo "==> Generating app icon…"
+  swift scripts/make-icon.swift "$APP/Contents/Resources/AppIcon.icns"
+else
+  echo "==> (skipping icon — scripts/make-icon.swift not present yet)"
+fi
 
 echo "==> Ad-hoc signing…"
 codesign --force --sign - "$APP"
