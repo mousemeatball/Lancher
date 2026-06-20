@@ -62,6 +62,9 @@ public final class AppEnvironment {
             query: viewModel.query,
             visible: controller.isVisible,
             filteredCount: viewModel.filteredApps.count,
+            folderCount: viewModel.folders.count,
+            looseCount: viewModel.looseApps.count,
+            openFolder: viewModel.openFolder?.name,
             lastError: viewModel.lastError
         )
     }
@@ -87,6 +90,22 @@ public final class AppEnvironment {
             }
             viewModel.activate(app)
             return DebugResult(ok: viewModel.lastError == nil, message: viewModel.lastError ?? "launched \(app.name)")
+        case "create-folder":
+            // `name` is the folder's name; the optional seed app is matched by `bundleID`/`q` only.
+            let seed = command.bundleID.flatMap { id in viewModel.allApps.first { $0.bundleID == id || $0.id == id } }
+                ?? command.q.flatMap { q in viewModel.allApps.first { $0.name.localizedCaseInsensitiveContains(q) } }
+            let id = viewModel.createFolder(named: command.name ?? Config.defaultFolderName, with: seed?.id)
+            return DebugResult(ok: true, message: "folder \(id) seeded=\(seed?.name ?? "none") (\(viewModel.folders.count) total)")
+        case "open-folder":
+            guard let folder = viewModel.folders.first(where: { $0.name.localizedCaseInsensitiveContains(command.name ?? command.q ?? "") }) else {
+                return DebugResult(ok: false, message: "folder not found")
+            }
+            controller.show()
+            viewModel.openFolder(folder.id)
+            return DebugResult(ok: true, message: "opened \(folder.name)")
+        case "clear-folders":
+            for folder in viewModel.folders { viewModel.deleteFolder(folder.id) }
+            return DebugResult(ok: true, message: "cleared")
         default:
             return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")
         }

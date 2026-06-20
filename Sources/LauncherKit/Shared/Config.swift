@@ -32,6 +32,12 @@ public enum Config {
     public static let searchFieldMaxWidth: CGFloat = 480
     public static let searchFieldVerticalPadding: CGFloat = 10
 
+    // Folders (user-created, persisted).
+    public static let foldersFileName = "folders.json"
+    public static let defaultFolderName = "New Folder"
+    public static let folderPreviewIconSize: CGFloat = 22
+    public static let folderTileCornerRadius: CGFloat = 16
+
     // Menu-bar symbol.
     public static let menuBarSymbolName = "square.grid.3x3.fill"
 

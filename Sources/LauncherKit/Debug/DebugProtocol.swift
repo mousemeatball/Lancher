@@ -9,6 +9,9 @@ public struct DebugState: Codable, Sendable {
     public var query: String
     public var visible: Bool
     public var filteredCount: Int
+    public var folderCount: Int
+    public var looseCount: Int
+    public var openFolder: String?
     public var lastError: String?
 
     public init(
@@ -18,6 +21,9 @@ public struct DebugState: Codable, Sendable {
         query: String,
         visible: Bool,
         filteredCount: Int,
+        folderCount: Int = 0,
+        looseCount: Int = 0,
+        openFolder: String? = nil,
         lastError: String?
     ) {
         self.app = app
@@ -26,6 +32,9 @@ public struct DebugState: Codable, Sendable {
         self.query = query
         self.visible = visible
         self.filteredCount = filteredCount
+        self.folderCount = folderCount
+        self.looseCount = looseCount
+        self.openFolder = openFolder
         self.lastError = lastError
     }
 

@@ -1,12 +1,15 @@
 #if canImport(SwiftUI) && canImport(AppKit)
 import SwiftUI
 
-/// The full-screen launcher: a centered search field above a scrolling grid of app tiles.
+/// The full-screen launcher: a centered search field above a scrolling grid. The grid shows search
+/// results while searching, the contents of an open folder when one is drilled into, or the root
+/// grid (folders then loose apps) otherwise.
 public struct LauncherView: View {
     @Bindable private var viewModel: LauncherViewModel
-    /// Called when the user clicks empty space — the host dismisses the overlay.
     private let onDismiss: () -> Void
     @FocusState private var searchFocused: Bool
+    @State private var renameTarget: Folder?
+    @State private var renameText: String = ""
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -19,7 +22,6 @@ public struct LauncherView: View {
 
     public var body: some View {
         ZStack {
-            // Dimmed backdrop; clicking it dismisses the launcher.
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
@@ -27,12 +29,20 @@ public struct LauncherView: View {
 
             VStack(spacing: Config.contentPadding) {
                 searchField
-                appGrid
+                if let folder = viewModel.openFolder { folderHeader(folder) }
+                grid
             }
             .padding(Config.contentPadding)
         }
         .onAppear { searchFocused = true }
+        .alert("Rename Folder", isPresented: isRenaming) {
+            TextField("Name", text: $renameText)
+            Button("Save") { if let target = renameTarget { viewModel.renameFolder(target.id, to: renameText) } }
+            Button("Cancel", role: .cancel) {}
+        }
     }
+
+    // MARK: - Pieces
 
     private var searchField: some View {
         TextField("Search", text: $viewModel.query)
@@ -46,15 +56,97 @@ public struct LauncherView: View {
             .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private var appGrid: some View {
+    private func folderHeader(_ folder: Folder) -> some View {
+        HStack(spacing: 8) {
+            Button { viewModel.closeFolder() } label: {
+                Image(systemName: "chevron.left").foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+            Text(folder.name).font(.title3).foregroundStyle(.white)
+        }
+    }
+
+    @ViewBuilder
+    private var grid: some View {
+        if viewModel.isSearching {
+            appGrid(viewModel.filteredApps, inFolder: nil)
+        } else if let folder = viewModel.openFolder {
+            appGrid(viewModel.apps(inFolder: folder.id), inFolder: folder.id)
+        } else {
+            rootGrid
+        }
+    }
+
+    private var rootGrid: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: Config.gridSpacing) {
-                ForEach(viewModel.filteredApps) { app in
-                    AppGridItemView(app: app) { viewModel.activate(app) }
+                ForEach(viewModel.rootEntries) { entry in
+                    switch entry {
+                    case .folder(let folder):
+                        FolderGridItemView(
+                            folder: folder,
+                            previewApps: viewModel.previewApps(for: folder)
+                        ) { viewModel.openFolder(folder.id) }
+                        .contextMenu { folderMenu(folder) }
+                    case .app(let app):
+                        appTile(app, inFolder: nil)
+                    }
                 }
             }
             .padding(.horizontal, Config.contentPadding)
         }
+    }
+
+    private func appGrid(_ apps: [AppItem], inFolder folderID: Folder.ID?) -> some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: Config.gridSpacing) {
+                ForEach(apps) { app in appTile(app, inFolder: folderID) }
+            }
+            .padding(.horizontal, Config.contentPadding)
+        }
+    }
+
+    private func appTile(_ app: AppItem, inFolder folderID: Folder.ID?) -> some View {
+        AppGridItemView(app: app) { viewModel.activate(app) }
+            .contextMenu { appMenu(app, inFolder: folderID) }
+    }
+
+    // MARK: - Context menus
+
+    @ViewBuilder
+    private func appMenu(_ app: AppItem, inFolder folderID: Folder.ID?) -> some View {
+        if let folderID {
+            Button("Remove from Folder") { viewModel.removeApp(app, fromFolder: folderID) }
+        } else {
+            Button("New Folder with \(app.name)…") { startNewFolder(with: app) }
+            if !viewModel.folders.isEmpty {
+                Menu("Add to Folder") {
+                    ForEach(viewModel.folders) { folder in
+                        Button(folder.name) { viewModel.addApp(app, toFolder: folder.id) }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func folderMenu(_ folder: Folder) -> some View {
+        Button("Rename…") { renameText = folder.name; renameTarget = folder }
+        Button("Delete Folder", role: .destructive) { viewModel.deleteFolder(folder.id) }
+    }
+
+    // MARK: - Helpers
+
+    private func startNewFolder(with app: AppItem) {
+        let id = viewModel.createFolder(with: app.id)
+        if let folder = viewModel.folderList.folder(id: id) {
+            renameText = folder.name
+            renameTarget = folder
+        }
+    }
+
+    private var isRenaming: Binding<Bool> {
+        Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })
     }
 }
 #endif

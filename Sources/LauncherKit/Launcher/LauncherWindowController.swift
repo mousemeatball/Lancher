@@ -61,7 +61,15 @@ public final class LauncherWindowController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.delegate = self
-        panel.onEscape = { [weak self] in self?.hide() }
+        // Esc backs out of an open folder first; otherwise it dismisses the launcher.
+        panel.onEscape = { [weak self] in
+            guard let self else { return }
+            if viewModel.openFolder != nil {
+                viewModel.closeFolder()
+            } else {
+                hide()
+            }
+        }
 
         let host = NSHostingView(
             rootView: LauncherView(viewModel: viewModel, onDismiss: { [weak self] in self?.hide() })
