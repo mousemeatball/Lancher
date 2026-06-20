@@ -60,6 +60,20 @@ import Foundation
         #expect(AppDiscoveryService(directories: [missing]).discoverApps().isEmpty)
     }
 
+    /// Regression: `.skipsHiddenFiles` used to drop `hidden`-flagged bundles (like Safari, which is
+    /// a hidden Cryptex symlink). Discovery must still find a bundle marked hidden.
+    @Test func discoversHiddenFlaggedBundle() throws {
+        let dir = try makeFixtureDir(appFileName: "Secret.app", bundleID: "com.example.secret", displayName: "Secret")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var appURL = dir.appending(path: "Secret.app")
+        var values = URLResourceValues()
+        values.isHidden = true
+        try appURL.setResourceValues(values)
+
+        let apps = AppDiscoveryService(directories: [dir]).discoverApps()
+        #expect(apps.contains { $0.bundleID == "com.example.secret" })
+    }
+
     @Test func sortsByNameCaseInsensitively() throws {
         let dir = try makeFixtureDir(appFileName: "zebra.app", bundleID: "com.z", displayName: "zebra")
         let app2 = dir.appending(path: "Apple.app").appending(path: "Contents")

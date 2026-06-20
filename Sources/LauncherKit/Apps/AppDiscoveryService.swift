@@ -27,10 +27,13 @@ public struct AppDiscoveryService: AppDiscovering {
     }
 
     private func appBundles(in directory: URL) -> [URL] {
+        // NB: we intentionally do *not* pass `.skipsHiddenFiles`. Some first-party apps (notably
+        // Safari) are `hidden`-flagged symlinks into the system Cryptex; skipping hidden entries
+        // would silently drop them. The `.app` extension filter already excludes dotfiles.
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: nil,
-            options: [.skipsHiddenFiles]
+            options: []
         ) else { return [] }
         return entries.filter { $0.pathExtension == "app" }
     }

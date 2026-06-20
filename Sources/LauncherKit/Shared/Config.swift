@@ -35,6 +35,11 @@ public enum Config {
     // Menu-bar symbol.
     public static let menuBarSymbolName = "square.grid.3x3.fill"
 
+    // Debug Bridge — loopback control server, enabled only with --debug or LANCHER_DEBUG=1.
+    public static let debugBridgePort: UInt16 = 53127
+    public static let debugBridgeInfoFileName = "debug-bridge.json"
+    public static let debugTokenHeader = "x-lancher-token"
+
     /// Returns the app-support directory, creating it if needed.
     public static func appSupportDirectory() throws -> URL {
         let base = try FileManager.default.url(

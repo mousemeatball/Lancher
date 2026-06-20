@@ -1,38 +1,105 @@
 #if canImport(AppKit)
 import AppKit
-import os
 
-/// Composition root: wires discovery → view model → window controller, and registers the global
-/// summon hotkey (⌥Space).
+/// Composition root: wires discovery → view model → window controller, registers the global summon
+/// hotkey (⌥Space), and (when launched with `--debug`) stands up the loopback Debug Bridge.
 ///
 /// Discovery runs synchronously at init, which is fine for the app count under `/Applications`.
 /// A later phase can move indexing off the main actor and watch for changes via FSEvents.
 @MainActor
 public final class AppEnvironment {
+    private let viewModel: LauncherViewModel
     private let controller: LauncherWindowController
     private var hotKey: GlobalHotKey?
-    private let log = Logger(subsystem: Config.loggingSubsystem, category: "app")
+    private var debugBridge: DebugBridge?
 
     public init(
         discovery: AppDiscovering = AppDiscoveryService(),
         launcher: AppLaunching = WorkspaceAppLauncher()
     ) {
         let apps = discovery.discoverApps()
-        let viewModel = LauncherViewModel(apps: apps, launcher: launcher)
+        self.viewModel = LauncherViewModel(apps: apps, launcher: launcher)
         self.controller = LauncherWindowController(viewModel: viewModel)
-        log.info("Discovered \(apps.count, privacy: .public) apps")
+        Log.event(Log.app, "Lancher \(Config.version) launched — discovered \(apps.count) apps")
 
         // Summon from anywhere with ⌥Space. Falls back to the menu-bar item if registration fails.
         self.hotKey = GlobalHotKey { [weak self] in
             MainActor.assumeIsolated { self?.toggleLauncher() }
         }
         if hotKey == nil {
-            log.error("Failed to register global hotkey — use the menu-bar item instead")
+            Log.event(Log.app, "Failed to register ⌥Space hotkey — use the menu-bar item instead")
+        }
+
+        if DebugBridge.isEnabled() {
+            startDebugBridge()
         }
     }
 
     public func toggleLauncher() {
         controller.toggle()
+    }
+
+    // MARK: - Debug Bridge
+
+    private func startDebugBridge() {
+        debugBridge = DebugBridge(
+            stateProvider: { [weak self] in self?.debugState() ?? .unavailable },
+            commandHandler: { [weak self] command in
+                self?.debugPerform(command) ?? DebugResult(ok: false, message: "host unavailable")
+            },
+            screenshotProvider: { [weak self] in self?.controller.snapshotPNG() }
+        )
+        if debugBridge == nil {
+            Log.event(Log.bridge, "Debug Bridge failed to start (port \(Config.debugBridgePort) in use?)")
+        }
+    }
+
+    private func debugState() -> DebugState {
+        DebugState(
+            app: Config.appName,
+            version: Config.version,
+            appCount: viewModel.allApps.count,
+            query: viewModel.query,
+            visible: controller.isVisible,
+            filteredCount: viewModel.filteredApps.count,
+            lastError: viewModel.lastError
+        )
+    }
+
+    private func debugPerform(_ command: DebugCommand) -> DebugResult {
+        switch command.cmd {
+        case "summon", "show":
+            controller.show()
+            return DebugResult(ok: true, message: "shown")
+        case "dismiss", "hide":
+            controller.hide()
+            return DebugResult(ok: true, message: "hidden")
+        case "toggle":
+            controller.toggle()
+            return DebugResult(ok: true, message: controller.isVisible ? "shown" : "hidden")
+        case "search":
+            controller.show()
+            viewModel.query = command.q ?? ""
+            return DebugResult(ok: true, message: "\(viewModel.filteredApps.count) results")
+        case "launch":
+            guard let app = findApp(for: command) else {
+                return DebugResult(ok: false, message: "app not found")
+            }
+            viewModel.activate(app)
+            return DebugResult(ok: viewModel.lastError == nil, message: viewModel.lastError ?? "launched \(app.name)")
+        default:
+            return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")
+        }
+    }
+
+    private func findApp(for command: DebugCommand) -> AppItem? {
+        if let bundleID = command.bundleID {
+            return viewModel.allApps.first { $0.bundleID == bundleID || $0.id == bundleID }
+        }
+        if let needle = command.name ?? command.q {
+            return viewModel.allApps.first { $0.name.localizedCaseInsensitiveContains(needle) }
+        }
+        return nil
     }
 }
 #endif

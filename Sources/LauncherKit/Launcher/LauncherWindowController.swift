@@ -34,6 +34,17 @@ public final class LauncherWindowController: NSObject, NSWindowDelegate {
         panel?.orderOut(nil)
     }
 
+    /// Render the current launcher window to PNG for the Debug Bridge's `/screenshot`. Summons the
+    /// window first if needed so a capture is always available.
+    public func snapshotPNG() -> Data? {
+        if !isVisible { show() }
+        guard let view = panel?.contentView else { return nil }
+        view.layoutSubtreeIfNeeded()
+        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        return rep.representation(using: .png, properties: [:])
+    }
+
     // MARK: - Construction
 
     private func makePanel() -> KeyablePanel {
