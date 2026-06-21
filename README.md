@@ -23,19 +23,33 @@ a locally built copy runs fine; a copy moved to another Mac needs **right-click 
 | 1 | Discovery → search → launch in a full-screen overlay; ⌥Space hotkey | ✅ Done |
 | 2 | Debug Bridge (drive/inspect over HTTP) + logging | ✅ Done |
 | 3 | User folders (color/emoji, CRUD), persisted | ✅ Done |
+| 4 | Themes (Liquid Glass / Flat) + settings (icon size, hide titles) | ✅ Done |
+| 5 | Wallpapers — color / image / video / dynamic Sun / Weather | ✅ Done |
+| 6 | Widgets — clock, affirmation, weather (corner-anchored) | ✅ Done |
+| 7 | Spaces — snapshot & restore settings/folders/widgets, schedulable | ✅ Done |
+| 8 | Workflows — open many apps/files at once | ✅ Done |
+| 9 | Hot corners + Preferences window | ✅ Done |
 | 10 | `.dmg` packaging + from-scratch app icon | ✅ Done |
-| 4–9 | Liquid Glass, Wallpapers, Widgets, Spaces, Workflows, Hot corners/Prefs | ⬜ Planned |
 
 See [`BUILD_PROMPT.txt`](BUILD_PROMPT.txt) for the full spec and phase-by-phase build guide.
+Backlog: 3-finger trackpad gesture summon, file search, clipboard history, AI command bar.
 
 ### Working today
 - Scans `/Applications`, `/System/Applications`, Utilities, and `~/Applications`; parses each
-  `Info.plist` (name, bundle id, category); de-duplicated and sorted. Finds hidden Cryptex apps
-  like Safari.
-- **⌥Space from anywhere** (Carbon hotkey — no Accessibility permission) toggles a full-screen
-  panel on the display under the cursor. Live case-insensitive search; click to launch.
-- **Folders:** right-click an app → *New Folder…* / *Add to Folder*; click a folder to open it
-  (Esc backs out); right-click to rename/delete. Saved to `~/Library/Application Support/Lancher`.
+  `Info.plist`; de-duplicated and sorted. Finds hidden Cryptex apps like Safari.
+- **⌥Space** (or a **hot corner**, or the menu) toggles a full-screen panel on the display under
+  the cursor. Live search; click to launch.
+- **Folders:** right-click an app → *New Folder…* / *Add to Folder*; click to open (Esc backs out);
+  rename/delete via right-click.
+- **Workflows:** right-click an app → *Add to Workflow*; a workflow tile opens all its apps/files
+  at once.
+- **Wallpapers:** color, image, looping video (paused when hidden), dynamic Sun (time of day), and
+  Weather (Open-Meteo) — set in Preferences.
+- **Widgets:** clock, affirmation, and weather, anchored to any corner.
+- **Spaces:** save the current theme/wallpaper/icon size/folders/widgets as a named Space; switch
+  from the chips at the top or automatically on a schedule.
+- **Preferences** (⌘,): theme, icon size, hide titles, wallpaper, hot corner, launch at login.
+- All state persists under `~/Library/Application Support/Lancher`.
 
 ## Build, run & test
 

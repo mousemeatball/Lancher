@@ -92,11 +92,11 @@ Sources/
                          FolderGridItemView, LauncherGridEntry, KeyablePanel,
                          LauncherWindowController (full-screen NSPanel)
     Folders/             Folder, FolderList, FolderStoring + FolderStore (JSON)
-    Spaces/              Space, SpaceStore, SpaceScheduler              [PLANNED]
-    Workflows/           Workflow, WorkflowRunner                       [PLANNED]
-    Wallpapers/          WallpaperEngine + Static/HEIC/Video/Sun/Weather[PLANNED]
-    Widgets/             Widget protocol + NowPlaying/Clock/Weather/... [PLANNED]
-    Theme/               LiquidGlass materials (native + fallback)      [PLANNED]
+    Spaces/              Space, SpaceStore, SpaceScheduler              [DONE]
+    Workflows/           Workflow, WorkflowRunner                       [DONE]
+    Wallpapers/          WallpaperEngine + Static/HEIC/Video/Sun/Weather[DONE]
+    Widgets/             Widget protocol + NowPlaying/Clock/Weather/... [DONE]
+    Theme/               LiquidGlass materials (native + fallback)      [DONE]
     Input/               GlobalHotKey (Carbon), HotCorners, GestureMonitor
     Persistence/         JSON stores under Application Support/Lancher
     Debug/               Log, DebugProtocol, HTTPMessage, DebugBridge
@@ -110,6 +110,8 @@ README.md
 --------------------------------------------------------------------------------
 6. STEP-BY-STEP BUILD GUIDE (phases). Each phase: `swift build` clean,
    scripts/test.sh green, and a Debug Bridge curl check once Phase 2 lands.
+   STATUS: Phases 0–10 are DONE (built, tested, verified via the Debug Bridge).
+   Remaining backlog: 3-finger gesture summon, file search, clipboard, AI bar.
 --------------------------------------------------------------------------------
 Phase 0  Reset & scaffold. archive/v1 branch; Package.swift (.macOS 26); module
          dirs; Config; run/test/package scripts; empty LSUIElement menu-bar app.
