@@ -18,6 +18,10 @@ public final class LauncherViewModel {
     /// User settings (theme, icon size, hide titles, wallpaper), persisted.
     public private(set) var settings: AppSettings
 
+    /// Whether the launcher overlay is currently on screen (drives video-wallpaper play/pause).
+    public private(set) var isPresented: Bool = false
+    public func setPresented(_ presented: Bool) { isPresented = presented }
+
     /// Called after a successful launch so the host window can dismiss itself.
     public var onClose: () -> Void = {}
     /// Called whenever settings change (e.g. so the wallpaper engine can re-render).

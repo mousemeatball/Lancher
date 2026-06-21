@@ -27,7 +27,10 @@ public struct LauncherView: View {
 
     public var body: some View {
         ZStack {
-            Color.black.opacity(0.45)
+            WallpaperView(spec: settings.wallpaper, isActive: viewModel.isPresented)
+                .ignoresSafeArea()
+            // Dim overlay for legibility; also the click-away dismiss target.
+            Color.black.opacity(settings.wallpaper == nil ? 0.45 : 0.35)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { onDismiss() }

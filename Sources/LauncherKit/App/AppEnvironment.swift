@@ -139,6 +139,13 @@ public final class AppEnvironment {
         case "clear-workflows":
             for workflow in viewModel.workflows { viewModel.deleteWorkflow(workflow.id) }
             return DebugResult(ok: true, message: "cleared")
+        case "set-wallpaper":
+            let spec: WallpaperSpec? = command.kind
+                .flatMap(WallpaperSpec.Kind.init(rawValue:))
+                .map { WallpaperSpec(kind: $0, value: command.value) }
+            viewModel.updateSettings(viewModel.settings.with(wallpaper: .some(spec)))
+            controller.show()
+            return DebugResult(ok: true, message: "wallpaper=\(spec?.id ?? "none")")
         default:
             return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")
         }

@@ -28,10 +28,12 @@ public final class LauncherWindowController: NSObject, NSWindowDelegate {
         panel.setFrame(screenUnderCursor().frame, display: true)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+        viewModel.setPresented(true)
     }
 
     public func hide() {
         panel?.orderOut(nil)
+        viewModel.setPresented(false)
     }
 
     /// Render the current launcher window to PNG for the Debug Bridge's `/screenshot`. Summons the

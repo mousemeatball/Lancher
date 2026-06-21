@@ -21,6 +21,11 @@ public enum Config {
     // Adjustable icon size range (Preferences slider / Spaces).
     public static let iconSizeRange: ClosedRange<Double> = 40...128
 
+    // Wallpapers.
+    public static let defaultWeatherCity = "San Francisco"
+    public static let wallpaperVideoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "m4v"]
+    public static let wallpaperImageExtensions: Set<String> = ["png", "jpg", "jpeg", "heic"]
+
     /// Directories scanned for `.app` bundles. The preferences "extra app sources" feature will
     /// append user-chosen directories to this list.
     public static let defaultAppDirectories: [URL] = [
