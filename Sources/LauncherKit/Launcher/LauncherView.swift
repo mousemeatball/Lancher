@@ -1,5 +1,6 @@
 #if canImport(SwiftUI) && canImport(AppKit)
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 
 /// The full-screen launcher: a centered search field above a scrolling grid. The grid shows search
@@ -49,6 +50,7 @@ public struct LauncherView: View {
                     onSave: { newSpaceText = ""; isNamingSpace = true }
                 )
                 searchField
+                if let result = viewModel.calculatorResult { calculatorRow(result) }
                 if let folder = viewModel.openFolder { folderHeader(folder) }
                 grid
             }
@@ -92,6 +94,26 @@ public struct LauncherView: View {
             .padding(.horizontal, 16)
             .frame(maxWidth: Config.searchFieldMaxWidth)
             .themedPanel(settings.theme, cornerRadius: 12)
+    }
+
+    private func calculatorRow(_ result: String) -> some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(result, forType: .string)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "equal.circle.fill")
+                Text("\(viewModel.query.trimmingCharacters(in: .whitespaces)) = \(result)")
+                    .font(.title3.weight(.medium))
+                Spacer()
+                Text("click to copy").font(.caption).opacity(0.7)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .frame(maxWidth: Config.searchFieldMaxWidth)
+            .themedPanel(settings.theme, cornerRadius: 12)
+        }
+        .buttonStyle(.plain)
     }
 
     private func folderHeader(_ folder: Folder) -> some View {
@@ -210,6 +232,8 @@ public struct LauncherView: View {
                     Button(workflow.name) { viewModel.addApp(app, toWorkflow: workflow.id) }
                 }
             }
+            Divider()
+            Button("Hide App") { viewModel.hideApp(app) }
         }
     }
 

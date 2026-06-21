@@ -14,33 +14,38 @@ public final class AppEnvironment {
     private var hotKey: GlobalHotKey?
     private var hotCorners: HotCorners?
     private var debugBridge: DebugBridge?
+    private var currentHotKeyCode: UInt32 = 0
+    private var currentHotKeyModifiers: UInt32 = 0
 
     public init(
-        discovery: AppDiscovering = AppDiscoveryService(),
+        discovery: AppDiscovering? = nil,
         launcher: AppLaunching = WorkspaceAppLauncher()
     ) {
-        let apps = discovery.discoverApps()
+        // Load settings first so discovery can include the user's extra app source directories.
+        let settings = SettingsStore().load()
+        let directories = Config.defaultAppDirectories
+            + settings.extraAppDirectories.map { URL(filePath: $0) }
+        let resolvedDiscovery = discovery ?? AppDiscoveryService(directories: directories)
+
+        let apps = resolvedDiscovery.discoverApps()
         let viewModel = LauncherViewModel(apps: apps, launcher: launcher)
         self.viewModel = viewModel
         self.controller = LauncherWindowController(viewModel: viewModel)
         self.preferences = PreferencesWindowController(viewModel: viewModel)
         Log.event(Log.app, "Lancher \(Config.version) launched — discovered \(apps.count) apps")
 
-        // Summon from anywhere with ⌥Space. Falls back to the menu-bar item if registration fails.
-        self.hotKey = GlobalHotKey { [weak self] in
-            MainActor.assumeIsolated { self?.toggleLauncher() }
-        }
-        if hotKey == nil {
-            Log.event(Log.app, "Failed to register ⌥Space hotkey — use the menu-bar item instead")
-        }
-
         // Hot-corner summon; kept in sync with settings.
         let hotCorners = HotCorners { [weak self] in self?.summon() }
         self.hotCorners = hotCorners
         viewModel.onSettingsChange = { [weak self] settings in
-            self?.hotCorners?.update(enabled: settings.hotCornerEnabled, corner: settings.hotCorner)
+            guard let self else { return }
+            self.hotCorners?.update(enabled: settings.hotCornerEnabled, corner: settings.hotCorner)
+            self.updateHotKeyIfNeeded(settings)
         }
         hotCorners.update(enabled: viewModel.settings.hotCornerEnabled, corner: viewModel.settings.hotCorner)
+
+        // Summon hotkey (user-configurable). Falls back to the menu-bar item if registration fails.
+        registerHotKey(viewModel.settings)
 
         if DebugBridge.isEnabled() {
             startDebugBridge()
@@ -64,6 +69,25 @@ public final class AppEnvironment {
 
     public func showPreferences() {
         preferences.show()
+    }
+
+    // MARK: - Hotkey
+
+    private func registerHotKey(_ settings: AppSettings) {
+        hotKey = GlobalHotKey(keyCode: settings.hotKeyKeyCode, modifiers: settings.hotKeyModifiers) { [weak self] in
+            MainActor.assumeIsolated { self?.toggleLauncher() }
+        }
+        currentHotKeyCode = settings.hotKeyKeyCode
+        currentHotKeyModifiers = settings.hotKeyModifiers
+        if hotKey == nil {
+            Log.event(Log.app, "Failed to register hotkey — use the menu-bar item or a hot corner")
+        }
+    }
+
+    private func updateHotKeyIfNeeded(_ settings: AppSettings) {
+        guard settings.hotKeyKeyCode != currentHotKeyCode
+            || settings.hotKeyModifiers != currentHotKeyModifiers else { return }
+        registerHotKey(settings)
     }
 
     // MARK: - Debug Bridge

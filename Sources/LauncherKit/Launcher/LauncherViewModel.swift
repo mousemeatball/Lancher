@@ -245,10 +245,35 @@ public final class LauncherViewModel {
         return apps.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
     }
 
+    /// If the query is a math expression, its formatted result (calculator in the search field).
+    public var calculatorResult: String? {
+        guard let value = ExpressionEvaluator.evaluate(query) else { return nil }
+        if value == value.rounded() && abs(value) < 1e15 { return String(Int(value)) }
+        return String(format: "%g", value)
+    }
+
     // MARK: - Root grid composition
 
     public var folders: [Folder] { folderList.folders }
-    public var looseApps: [AppItem] { folderList.looseApps(from: allApps) }
+    public var looseApps: [AppItem] {
+        let hidden = settings.hiddenIDSet
+        return folderList.looseApps(from: allApps).filter { !hidden.contains($0.id) }
+    }
+
+    /// Apps the user has hidden (shown in Preferences for unhiding).
+    public var hiddenApps: [AppItem] {
+        let hidden = settings.hiddenIDSet
+        return allApps.filter { hidden.contains($0.id) }
+    }
+
+    public func hideApp(_ app: AppItem) {
+        guard !settings.hiddenAppIDs.contains(app.id) else { return }
+        updateSettings(settings.with(hiddenAppIDs: settings.hiddenAppIDs + [app.id]))
+    }
+
+    public func unhideApp(_ id: String) {
+        updateSettings(settings.with(hiddenAppIDs: settings.hiddenAppIDs.filter { $0 != id }))
+    }
 
     /// The root grid. Default order is workflows, then folders, then loose apps; if the user has a
     /// custom `layoutOrder`, entries are sorted by it (unknown/new entries keep default order and
@@ -275,7 +300,8 @@ public final class LauncherViewModel {
     }
 
     public func apps(inFolder id: Folder.ID) -> [AppItem] {
-        folderList.apps(inFolder: id, from: allApps)
+        let hidden = settings.hiddenIDSet
+        return folderList.apps(inFolder: id, from: allApps).filter { !hidden.contains($0.id) }
     }
 
     /// Up to four icons used to draw a folder tile's mini preview.

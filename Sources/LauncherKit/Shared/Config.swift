@@ -23,6 +23,10 @@ public enum Config {
     // Adjustable icon size range (Preferences slider / Spaces).
     public static let iconSizeRange: ClosedRange<Double> = 40...128
 
+    // Default global hotkey (Carbon raw values, kept here to avoid importing Carbon in models).
+    public static let defaultHotKeyKeyCode: UInt32 = 49     // kVK_Space
+    public static let defaultHotKeyModifiers: UInt32 = 2048 // optionKey (⌥)
+
     // Wallpapers.
     public static let defaultWeatherCity = "San Francisco"
     public static let wallpaperVideoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "m4v"]
