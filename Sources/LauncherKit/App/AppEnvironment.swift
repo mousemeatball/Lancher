@@ -33,9 +33,14 @@ public final class AppEnvironment {
         if DebugBridge.isEnabled() {
             startDebugBridge()
         }
+
+        // Apply any schedule-selected Space at launch.
+        viewModel.applyScheduledSpaceIfNeeded()
     }
 
     public func toggleLauncher() {
+        // Honor schedule-based Space switching each time the launcher is summoned.
+        viewModel.applyScheduledSpaceIfNeeded()
         controller.toggle()
     }
 
@@ -69,6 +74,7 @@ public final class AppEnvironment {
             iconSize: viewModel.settings.iconSize,
             hideTitles: viewModel.settings.hideTitles,
             wallpaper: viewModel.settings.wallpaper?.id,
+            activeSpace: viewModel.activeSpace?.name,
             workflowCount: viewModel.workflows.count,
             widgetCount: viewModel.widgets.count,
             lastError: viewModel.lastError
@@ -157,6 +163,19 @@ public final class AppEnvironment {
             return DebugResult(ok: true, message: "\(kind.rawValue) @ \(corner.rawValue) (\(viewModel.widgets.count) total)")
         case "clear-widgets":
             viewModel.clearWidgets()
+            return DebugResult(ok: true, message: "cleared")
+        case "save-space":
+            let id = viewModel.saveSpace(named: command.name ?? "Space \(viewModel.spaces.count + 1)")
+            return DebugResult(ok: true, message: "saved \(viewModel.spaces.first { $0.id == id }?.name ?? "?") (\(viewModel.spaces.count) total)")
+        case "apply-space":
+            guard let space = viewModel.spaces.first(where: { $0.name.localizedCaseInsensitiveContains(command.name ?? command.q ?? "") }) else {
+                return DebugResult(ok: false, message: "space not found")
+            }
+            viewModel.applySpace(space.id)
+            controller.show()
+            return DebugResult(ok: true, message: "applied \(space.name)")
+        case "clear-spaces":
+            viewModel.clearSpaces()
             return DebugResult(ok: true, message: "cleared")
         default:
             return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")

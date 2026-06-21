@@ -33,12 +33,17 @@ public final class LauncherViewModel {
     /// The user's corner widgets, persisted.
     public private(set) var widgets: [WidgetSpec]
 
+    /// Saved Spaces and which one is active.
+    public private(set) var spaces: [Space]
+    public private(set) var activeSpaceID: Space.ID?
+
     private let launcher: AppLaunching
     private let folderStore: FolderStoring
     private let settingsStore: SettingsStoring
     private let workflowStore: WorkflowStoring
     private let workflowRunner: WorkflowRunner
     private let widgetStore: WidgetStoring
+    private let spaceStore: SpaceStoring
 
     public init(
         apps: [AppItem],
@@ -47,7 +52,8 @@ public final class LauncherViewModel {
         settingsStore: SettingsStoring = SettingsStore(),
         workflowStore: WorkflowStoring = WorkflowStore(),
         workflowRunner: WorkflowRunner = WorkflowRunner(),
-        widgetStore: WidgetStoring = WidgetStore()
+        widgetStore: WidgetStoring = WidgetStore(),
+        spaceStore: SpaceStoring = SpaceStore()
     ) {
         self.allApps = apps
         self.launcher = launcher
@@ -56,10 +62,64 @@ public final class LauncherViewModel {
         self.workflowStore = workflowStore
         self.workflowRunner = workflowRunner
         self.widgetStore = widgetStore
+        self.spaceStore = spaceStore
         self.folderList = folderStore.load()
         self.settings = settingsStore.load()
         self.workflows = workflowStore.load()
         self.widgets = widgetStore.load()
+        let spacesData = spaceStore.load()
+        self.spaces = spacesData.spaces
+        self.activeSpaceID = spacesData.activeID
+    }
+
+    // MARK: - Spaces
+
+    public var activeSpace: Space? { spaces.first { $0.id == activeSpaceID } }
+
+    /// Snapshot the current settings, folders, and widgets into a new Space.
+    @discardableResult
+    public func saveSpace(named name: String, schedule: SpaceSchedule? = nil) -> Space.ID {
+        let space = Space(name: name, settings: settings, folders: folderList, widgets: widgets, schedule: schedule)
+        spaces.append(space)
+        activeSpaceID = space.id
+        persistSpaces()
+        return space.id
+    }
+
+    /// Apply a Space: restore its settings, folders, and widgets (each persisted).
+    public func applySpace(_ id: Space.ID) {
+        guard let space = spaces.first(where: { $0.id == id }) else { return }
+        updateSettings(space.settings)
+        apply(space.folders)
+        widgets = space.widgets
+        persistWidgets()
+        activeSpaceID = id
+        persistSpaces()
+    }
+
+    public func deleteSpace(_ id: Space.ID) {
+        spaces.removeAll { $0.id == id }
+        if activeSpaceID == id { activeSpaceID = nil }
+        persistSpaces()
+    }
+
+    public func clearSpaces() {
+        spaces.removeAll()
+        activeSpaceID = nil
+        persistSpaces()
+    }
+
+    /// Apply the schedule-selected Space if it differs from the active one.
+    public func applyScheduledSpaceIfNeeded(at date: Date = Date()) {
+        guard let scheduled = SpaceScheduler.activeSpace(at: date, among: spaces),
+              scheduled.id != activeSpaceID
+        else { return }
+        applySpace(scheduled.id)
+    }
+
+    private func persistSpaces() {
+        do { try spaceStore.save(SpacesData(spaces: spaces, activeID: activeSpaceID)) }
+        catch { lastError = "Couldn't save spaces: \(error.localizedDescription)" }
     }
 
     // MARK: - Widgets

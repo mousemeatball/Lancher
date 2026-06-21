@@ -12,6 +12,8 @@ public struct LauncherView: View {
     @State private var renameText: String = ""
     @State private var renameWorkflowTarget: Workflow?
     @State private var renameWorkflowText: String = ""
+    @State private var isNamingSpace = false
+    @State private var newSpaceText: String = ""
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -36,6 +38,13 @@ public struct LauncherView: View {
                 .onTapGesture { onDismiss() }
 
             VStack(spacing: Config.contentPadding) {
+                SpaceSwitcherView(
+                    spaces: viewModel.spaces,
+                    activeID: viewModel.activeSpaceID,
+                    theme: settings.theme,
+                    onApply: { viewModel.applySpace($0) },
+                    onSave: { newSpaceText = ""; isNamingSpace = true }
+                )
                 searchField
                 if let folder = viewModel.openFolder { folderHeader(folder) }
                 grid
@@ -54,6 +63,16 @@ public struct LauncherView: View {
             TextField("Name", text: $renameWorkflowText)
             Button("Save") { if let target = renameWorkflowTarget { viewModel.renameWorkflow(target.id, to: renameWorkflowText) } }
             Button("Cancel", role: .cancel) {}
+        }
+        .alert("Save Space", isPresented: $isNamingSpace) {
+            TextField("Space name", text: $newSpaceText)
+            Button("Save") {
+                let name = newSpaceText.trimmingCharacters(in: .whitespacesAndNewlines)
+                viewModel.saveSpace(named: name.isEmpty ? "Space \(viewModel.spaces.count + 1)" : name)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Saves the current wallpaper, theme, icon size, folders, and widgets as a Space.")
         }
     }
 
