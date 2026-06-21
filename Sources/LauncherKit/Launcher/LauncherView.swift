@@ -16,8 +16,11 @@ public struct LauncherView: View {
         self.onDismiss = onDismiss
     }
 
+    private var settings: AppSettings { viewModel.settings }
+    private var iconSize: CGFloat { CGFloat(settings.iconSize) }
+
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: Config.gridItemWidth), spacing: Config.gridSpacing)]
+        [GridItem(.adaptive(minimum: iconSize + Config.gridItemPadding), spacing: Config.gridSpacing)]
     }
 
     public var body: some View {
@@ -52,8 +55,9 @@ public struct LauncherView: View {
             .foregroundStyle(.white)
             .focused($searchFocused)
             .padding(.vertical, Config.searchFieldVerticalPadding)
+            .padding(.horizontal, 16)
             .frame(maxWidth: Config.searchFieldMaxWidth)
-            .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+            .themedPanel(settings.theme, cornerRadius: 12)
     }
 
     private func folderHeader(_ folder: Folder) -> some View {
@@ -85,7 +89,9 @@ public struct LauncherView: View {
                     case .folder(let folder):
                         FolderGridItemView(
                             folder: folder,
-                            previewApps: viewModel.previewApps(for: folder)
+                            previewApps: viewModel.previewApps(for: folder),
+                            iconSize: iconSize,
+                            hideTitle: settings.hideTitles
                         ) { viewModel.openFolder(folder.id) }
                         .contextMenu { folderMenu(folder) }
                     case .app(let app):
@@ -107,7 +113,11 @@ public struct LauncherView: View {
     }
 
     private func appTile(_ app: AppItem, inFolder folderID: Folder.ID?) -> some View {
-        AppGridItemView(app: app) { viewModel.activate(app) }
+        AppGridItemView(
+            app: app,
+            iconSize: iconSize,
+            hideTitle: settings.hideTitles
+        ) { viewModel.activate(app) }
             .contextMenu { appMenu(app, inFolder: folderID) }
     }
 

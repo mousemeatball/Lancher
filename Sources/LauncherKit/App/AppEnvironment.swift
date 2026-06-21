@@ -65,6 +65,10 @@ public final class AppEnvironment {
             folderCount: viewModel.folders.count,
             looseCount: viewModel.looseApps.count,
             openFolder: viewModel.openFolder?.name,
+            theme: viewModel.settings.theme.rawValue,
+            iconSize: viewModel.settings.iconSize,
+            hideTitles: viewModel.settings.hideTitles,
+            wallpaper: viewModel.settings.wallpaper?.id,
             lastError: viewModel.lastError
         )
     }
@@ -106,6 +110,15 @@ public final class AppEnvironment {
         case "clear-folders":
             for folder in viewModel.folders { viewModel.deleteFolder(folder.id) }
             return DebugResult(ok: true, message: "cleared")
+        case "set-pref":
+            let theme = command.theme.flatMap(AppTheme.init(rawValue:))
+            viewModel.updateSettings(viewModel.settings.with(
+                theme: theme,
+                iconSize: command.iconSize,
+                hideTitles: command.hideTitles
+            ))
+            let s = viewModel.settings
+            return DebugResult(ok: true, message: "theme=\(s.theme.rawValue) iconSize=\(Int(s.iconSize)) hideTitles=\(s.hideTitles)")
         default:
             return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")
         }

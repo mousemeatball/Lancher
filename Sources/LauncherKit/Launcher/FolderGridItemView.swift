@@ -7,21 +7,27 @@ import AppKit
 struct FolderGridItemView: View {
     let folder: Folder
     let previewApps: [AppItem]
+    let iconSize: CGFloat
+    let hideTitle: Bool
     let action: () -> Void
+
+    private var tileWidth: CGFloat { iconSize + Config.gridItemPadding }
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 tile
-                    .frame(width: Config.iconSize, height: Config.iconSize)
-                Text(folder.name)
-                    .font(.caption)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: Config.gridItemWidth)
+                    .frame(width: iconSize, height: iconSize)
+                if !hideTitle {
+                    Text(folder.name)
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: tileWidth)
+                }
             }
-            .frame(width: Config.gridItemWidth)
+            .frame(width: tileWidth)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -36,7 +42,7 @@ struct FolderGridItemView: View {
     @ViewBuilder
     private var content: some View {
         if let emoji = folder.emoji, !emoji.isEmpty {
-            Text(emoji).font(.system(size: Config.iconSize * 0.5))
+            Text(emoji).font(.system(size: iconSize * 0.5))
         } else {
             let size = Config.folderPreviewIconSize
             LazyVGrid(columns: [GridItem(.fixed(size), spacing: 4), GridItem(.fixed(size), spacing: 4)], spacing: 4) {

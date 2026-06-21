@@ -14,6 +14,12 @@ public enum Config {
     // Persistence — everything lives under ~/Library/Application Support/Lancher.
     public static let appSupportFolderName = "Lancher"
     public static let logFileName = "lancher.log"
+    public static let settingsFileName = "settings.json"
+    public static let spacesFileName = "spaces.json"
+    public static let workflowsFileName = "workflows.json"
+
+    // Adjustable icon size range (Preferences slider / Spaces).
+    public static let iconSizeRange: ClosedRange<Double> = 40...128
 
     /// Directories scanned for `.app` bundles. The preferences "extra app sources" feature will
     /// append user-chosen directories to this list.
@@ -26,6 +32,7 @@ public enum Config {
 
     // Grid / icon sizing (Preferences will make these user-adjustable).
     public static let gridItemWidth: CGFloat = 104
+    public static let gridItemPadding: CGFloat = 40   // tile width = iconSize + this
     public static let gridSpacing: CGFloat = 28
     public static let iconSize: CGFloat = 64
     public static let contentPadding: CGFloat = 40

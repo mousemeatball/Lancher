@@ -15,17 +15,39 @@ public final class LauncherViewModel {
     /// The folder the user has drilled into, or `nil` for the root grid.
     public private(set) var openFolderID: Folder.ID?
 
+    /// User settings (theme, icon size, hide titles, wallpaper), persisted.
+    public private(set) var settings: AppSettings
+
     /// Called after a successful launch so the host window can dismiss itself.
     public var onClose: () -> Void = {}
+    /// Called whenever settings change (e.g. so the wallpaper engine can re-render).
+    public var onSettingsChange: (AppSettings) -> Void = { _ in }
 
     private let launcher: AppLaunching
     private let folderStore: FolderStoring
+    private let settingsStore: SettingsStoring
 
-    public init(apps: [AppItem], launcher: AppLaunching, folderStore: FolderStoring = FolderStore()) {
+    public init(
+        apps: [AppItem],
+        launcher: AppLaunching,
+        folderStore: FolderStoring = FolderStore(),
+        settingsStore: SettingsStoring = SettingsStore()
+    ) {
         self.allApps = apps
         self.launcher = launcher
         self.folderStore = folderStore
+        self.settingsStore = settingsStore
         self.folderList = folderStore.load()
+        self.settings = settingsStore.load()
+    }
+
+    // MARK: - Settings
+
+    public func updateSettings(_ newSettings: AppSettings) {
+        settings = newSettings
+        onSettingsChange(newSettings)
+        do { try settingsStore.save(newSettings) }
+        catch { lastError = "Couldn't save settings: \(error.localizedDescription)" }
     }
 
     // MARK: - Search

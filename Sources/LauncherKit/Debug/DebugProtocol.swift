@@ -12,6 +12,12 @@ public struct DebugState: Codable, Sendable {
     public var folderCount: Int
     public var looseCount: Int
     public var openFolder: String?
+    public var theme: String?
+    public var iconSize: Double?
+    public var hideTitles: Bool?
+    public var wallpaper: String?
+    public var activeSpace: String?
+    public var workflowCount: Int?
     public var lastError: String?
 
     public init(
@@ -24,6 +30,12 @@ public struct DebugState: Codable, Sendable {
         folderCount: Int = 0,
         looseCount: Int = 0,
         openFolder: String? = nil,
+        theme: String? = nil,
+        iconSize: Double? = nil,
+        hideTitles: Bool? = nil,
+        wallpaper: String? = nil,
+        activeSpace: String? = nil,
+        workflowCount: Int? = nil,
         lastError: String?
     ) {
         self.app = app
@@ -35,6 +47,12 @@ public struct DebugState: Codable, Sendable {
         self.folderCount = folderCount
         self.looseCount = looseCount
         self.openFolder = openFolder
+        self.theme = theme
+        self.iconSize = iconSize
+        self.hideTitles = hideTitles
+        self.wallpaper = wallpaper
+        self.activeSpace = activeSpace
+        self.workflowCount = workflowCount
         self.lastError = lastError
     }
 
@@ -51,6 +69,16 @@ public struct DebugCommand: Decodable, Sendable {
     public let q: String?
     public let bundleID: String?
     public let name: String?
+    // Preferences (set-pref)
+    public let theme: String?
+    public let iconSize: Double?
+    public let hideTitles: Bool?
+    // Wallpaper (set-wallpaper)
+    public let kind: String?
+    public let value: String?
+    // Workflows / Spaces
+    public let apps: [String]?
+    public let paths: [String]?
 }
 
 /// Result of a command, returned as JSON.
