@@ -24,6 +24,20 @@ public struct PreferencesView: View {
                     Text("\(Int(viewModel.settings.iconSize))").monospacedDigit().frame(width: 34)
                 }
                 Toggle("Hide titles", isOn: hideTitlesBinding)
+                Picker("Icon style", selection: iconStyleBinding) {
+                    ForEach(IconStyle.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+            }
+
+            Section("Custom Files & Folders") {
+                ForEach(viewModel.settings.customItems, id: \.self) { path in
+                    HStack {
+                        Text((path as NSString).lastPathComponent).help(path)
+                        Spacer()
+                        Button("Remove") { viewModel.removeCustomItem(path: path) }
+                    }
+                }
+                Button("Add File or Folder…") { addCustomItem() }
             }
 
             Section("Wallpaper") {
@@ -112,6 +126,20 @@ public struct PreferencesView: View {
                     let spec = kind.map { WallpaperSpec(kind: $0) }
                     viewModel.updateSettings(viewModel.settings.with(wallpaper: .some(spec)))
                 })
+    }
+
+    private var iconStyleBinding: Binding<IconStyle> {
+        Binding(get: { viewModel.settings.iconStyle },
+                set: { viewModel.updateSettings(viewModel.settings.with(iconStyle: $0)) })
+    }
+
+    private func addCustomItem() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        viewModel.addCustomItem(path: url.path)
     }
 
     private var shortcutBinding: Binding<HotKeyCombo> {

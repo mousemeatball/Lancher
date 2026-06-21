@@ -18,6 +18,7 @@ public struct LauncherView: View {
     @State private var newSpaceText: String = ""
     @State private var draggingID: String?
     @State private var dropTargetFolderID: Folder.ID?
+    @State private var showCategories = false
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -51,6 +52,15 @@ public struct LauncherView: View {
                 )
                 searchField
                 if let result = viewModel.calculatorResult { calculatorRow(result) }
+                if !viewModel.isSearching && viewModel.openFolder == nil {
+                    Picker("", selection: $showCategories) {
+                        Text("Apps").tag(false)
+                        Text("Categories").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 240)
+                }
                 if let folder = viewModel.openFolder { folderHeader(folder) }
                 grid
             }
@@ -132,8 +142,29 @@ public struct LauncherView: View {
             appGrid(viewModel.filteredApps, inFolder: nil)
         } else if let folder = viewModel.openFolder {
             appGrid(viewModel.apps(inFolder: folder.id), inFolder: folder.id)
+        } else if showCategories {
+            categoriesView
         } else {
             rootGrid
+        }
+    }
+
+    private var categoriesView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Config.contentPadding) {
+                ForEach(viewModel.appsByCategory, id: \.name) { group in
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(group.name)
+                            .font(.headline)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .padding(.horizontal, Config.contentPadding)
+                        LazyVGrid(columns: columns, spacing: Config.gridSpacing) {
+                            ForEach(group.apps) { app in appTile(app, inFolder: nil) }
+                        }
+                        .padding(.horizontal, Config.contentPadding)
+                    }
+                }
+            }
         }
     }
 
@@ -186,6 +217,8 @@ public struct LauncherView: View {
                     .opacity(dropTargetFolderID == folder.id ? 1 : 0)
             )
             .contextMenu { folderMenu(folder) }
+        case .file(let item):
+            fileTile(item)
         case .app(let app):
             appTile(app, inFolder: nil)
         }
@@ -204,9 +237,31 @@ public struct LauncherView: View {
         AppGridItemView(
             app: app,
             iconSize: iconSize,
-            hideTitle: settings.hideTitles
+            hideTitle: settings.hideTitles,
+            overrideImagePath: viewModel.iconOverridePath(for: app),
+            iconStyle: settings.iconStyle
         ) { viewModel.activate(app) }
             .contextMenu { appMenu(app, inFolder: folderID) }
+    }
+
+    private func fileTile(_ item: CustomItem) -> some View {
+        Button { viewModel.openItem(item) } label: {
+            VStack(spacing: 8) {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: item.path))
+                    .resizable().interpolation(.high)
+                    .frame(width: iconSize, height: iconSize)
+                if !settings.hideTitles {
+                    Text(item.name).font(.caption).foregroundStyle(.white)
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: iconSize + Config.gridItemPadding)
+                }
+            }
+            .frame(width: iconSize + Config.gridItemPadding)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(item.path)
+        .contextMenu { Button("Remove", role: .destructive) { viewModel.removeCustomItem(path: item.path) } }
     }
 
     // MARK: - Context menus
@@ -233,8 +288,21 @@ public struct LauncherView: View {
                 }
             }
             Divider()
+            Button("Change Icon…") { changeIcon(for: app) }
+            if viewModel.iconOverridePath(for: app) != nil {
+                Button("Reset Icon") { viewModel.resetCustomIcon(for: app) }
+            }
             Button("Hide App") { viewModel.hideApp(app) }
         }
+    }
+
+    private func changeIcon(for app: AppItem) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.png, .jpeg, .image]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        viewModel.setCustomIcon(url.path, for: app)
     }
 
     @ViewBuilder

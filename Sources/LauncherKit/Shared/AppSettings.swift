@@ -18,6 +18,15 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Global summon hotkey (Carbon key code + modifier mask).
     public var hotKeyKeyCode: UInt32
     public var hotKeyModifiers: UInt32
+    /// User-added files/folders shown on the grid (paths).
+    public var customItems: [String]
+    /// Per-app icon overrides: `AppItem.id` → image file path.
+    public var customIcons: [String: String]
+    /// Icon appearance treatment.
+    public var iconStyle: IconStyle
+    /// Feature toggles.
+    public var clipboardEnabled: Bool
+    public var gestureEnabled: Bool
 
     public init(
         theme: AppTheme = .liquidGlass,
@@ -29,7 +38,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         extraAppDirectories: [String] = [],
         hiddenAppIDs: [String] = [],
         hotKeyKeyCode: UInt32 = Config.defaultHotKeyKeyCode,
-        hotKeyModifiers: UInt32 = Config.defaultHotKeyModifiers
+        hotKeyModifiers: UInt32 = Config.defaultHotKeyModifiers,
+        customItems: [String] = [],
+        customIcons: [String: String] = [:],
+        iconStyle: IconStyle = .original,
+        clipboardEnabled: Bool = true,
+        gestureEnabled: Bool = false
     ) {
         self.theme = theme
         self.iconSize = iconSize
@@ -41,11 +55,17 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.hiddenAppIDs = hiddenAppIDs
         self.hotKeyKeyCode = hotKeyKeyCode
         self.hotKeyModifiers = hotKeyModifiers
+        self.customItems = customItems
+        self.customIcons = customIcons
+        self.iconStyle = iconStyle
+        self.clipboardEnabled = clipboardEnabled
+        self.gestureEnabled = gestureEnabled
     }
 
     private enum CodingKeys: String, CodingKey {
         case theme, iconSize, hideTitles, wallpaper, hotCornerEnabled, hotCorner
         case extraAppDirectories, hiddenAppIDs, hotKeyKeyCode, hotKeyModifiers
+        case customItems, customIcons, iconStyle, clipboardEnabled, gestureEnabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -60,6 +80,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
         hiddenAppIDs = try c.decodeIfPresent([String].self, forKey: .hiddenAppIDs) ?? []
         hotKeyKeyCode = try c.decodeIfPresent(UInt32.self, forKey: .hotKeyKeyCode) ?? Config.defaultHotKeyKeyCode
         hotKeyModifiers = try c.decodeIfPresent(UInt32.self, forKey: .hotKeyModifiers) ?? Config.defaultHotKeyModifiers
+        customItems = try c.decodeIfPresent([String].self, forKey: .customItems) ?? []
+        customIcons = try c.decodeIfPresent([String: String].self, forKey: .customIcons) ?? [:]
+        iconStyle = try c.decodeIfPresent(IconStyle.self, forKey: .iconStyle) ?? .original
+        clipboardEnabled = try c.decodeIfPresent(Bool.self, forKey: .clipboardEnabled) ?? true
+        gestureEnabled = try c.decodeIfPresent(Bool.self, forKey: .gestureEnabled) ?? false
     }
 
     public var hiddenIDSet: Set<String> { Set(hiddenAppIDs) }
@@ -74,7 +99,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         extraAppDirectories: [String]? = nil,
         hiddenAppIDs: [String]? = nil,
         hotKeyKeyCode: UInt32? = nil,
-        hotKeyModifiers: UInt32? = nil
+        hotKeyModifiers: UInt32? = nil,
+        customItems: [String]? = nil,
+        customIcons: [String: String]? = nil,
+        iconStyle: IconStyle? = nil,
+        clipboardEnabled: Bool? = nil,
+        gestureEnabled: Bool? = nil
     ) -> AppSettings {
         AppSettings(
             theme: theme ?? self.theme,
@@ -86,7 +116,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
             extraAppDirectories: extraAppDirectories ?? self.extraAppDirectories,
             hiddenAppIDs: hiddenAppIDs ?? self.hiddenAppIDs,
             hotKeyKeyCode: hotKeyKeyCode ?? self.hotKeyKeyCode,
-            hotKeyModifiers: hotKeyModifiers ?? self.hotKeyModifiers
+            hotKeyModifiers: hotKeyModifiers ?? self.hotKeyModifiers,
+            customItems: customItems ?? self.customItems,
+            customIcons: customIcons ?? self.customIcons,
+            iconStyle: iconStyle ?? self.iconStyle,
+            clipboardEnabled: clipboardEnabled ?? self.clipboardEnabled,
+            gestureEnabled: gestureEnabled ?? self.gestureEnabled
         )
     }
 }

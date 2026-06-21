@@ -275,12 +275,30 @@ public final class LauncherViewModel {
         updateSettings(settings.with(hiddenAppIDs: settings.hiddenAppIDs.filter { $0 != id }))
     }
 
-    /// The root grid. Default order is workflows, then folders, then loose apps; if the user has a
-    /// custom `layoutOrder`, entries are sorted by it (unknown/new entries keep default order and
-    /// are appended after known ones).
+    /// User-added files/folders shown on the grid.
+    public var customItems: [CustomItem] { settings.customItems.map(CustomItem.init) }
+
+    /// Apps grouped by humanized category (Categories page). Includes all apps (even hidden ones),
+    /// matching LaunchMe where hidden apps remain reachable via Categories.
+    public var appsByCategory: [(name: String, apps: [AppItem])] {
+        Dictionary(grouping: allApps) { Self.humanCategory($0.category) }
+            .map { (name: $0.key, apps: $0.value.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }) }
+            .sorted { $0.name < $1.name }
+    }
+
+    static func humanCategory(_ raw: String?) -> String {
+        guard let raw, !raw.isEmpty else { return "Other" }
+        let stripped = raw.replacingOccurrences(of: "public.app-category.", with: "")
+        return stripped.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
+    }
+
+    /// The root grid. Default order is workflows, folders, custom items, then loose apps; if the
+    /// user has a custom `layoutOrder`, entries are sorted by it (unknown/new entries keep default
+    /// order and are appended after known ones).
     public var rootEntries: [LauncherGridEntry] {
         let base = workflows.map(LauncherGridEntry.workflow)
             + folders.map(LauncherGridEntry.folder)
+            + customItems.map(LauncherGridEntry.file)
             + looseApps.map(LauncherGridEntry.app)
         guard !layoutOrder.isEmpty else { return base }
 
@@ -370,6 +388,39 @@ public final class LauncherViewModel {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    /// Open a user-added file/folder (reuses the workflow runner's URL opener).
+    public func openItem(_ item: CustomItem) {
+        _ = workflowRunner.run(Workflow(name: item.name, paths: [item.path]), apps: allApps)
+        onClose()
+    }
+
+    // MARK: - Custom items & icons
+
+    public func addCustomItem(path: String) {
+        guard !settings.customItems.contains(path) else { return }
+        updateSettings(settings.with(customItems: settings.customItems + [path]))
+    }
+
+    public func removeCustomItem(path: String) {
+        updateSettings(settings.with(customItems: settings.customItems.filter { $0 != path }))
+    }
+
+    public func iconOverridePath(for app: AppItem) -> String? {
+        settings.customIcons[app.id]
+    }
+
+    public func setCustomIcon(_ path: String, for app: AppItem) {
+        var icons = settings.customIcons
+        icons[app.id] = path
+        updateSettings(settings.with(customIcons: icons))
+    }
+
+    public func resetCustomIcon(for app: AppItem) {
+        var icons = settings.customIcons
+        icons[app.id] = nil
+        updateSettings(settings.with(customIcons: icons))
     }
 
     // MARK: - Private

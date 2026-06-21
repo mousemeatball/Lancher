@@ -2,11 +2,14 @@
 import SwiftUI
 import AppKit
 
-/// A single app tile: icon above an optional single-line name. Loads the icon on demand.
+/// A single app tile: icon above an optional single-line name. Honors a custom icon override and
+/// the global icon style; loads the system icon on demand otherwise.
 struct AppGridItemView: View {
     let app: AppItem
     let iconSize: CGFloat
     let hideTitle: Bool
+    var overrideImagePath: String? = nil
+    var iconStyle: IconStyle = .original
     let action: () -> Void
 
     private var tileWidth: CGFloat { iconSize + Config.gridItemPadding }
@@ -35,7 +38,11 @@ struct AppGridItemView: View {
     }
 
     private var icon: NSImage {
-        NSWorkspace.shared.icon(forFile: app.url.path)
+        if let overrideImagePath, let custom = NSImage(contentsOfFile: overrideImagePath) {
+            return custom    // user's own icon — used as-is
+        }
+        let base = NSWorkspace.shared.icon(forFile: app.url.path)
+        return IconRenderer.render(base, style: iconStyle, key: app.id)
     }
 }
 #endif
