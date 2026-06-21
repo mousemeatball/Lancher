@@ -10,6 +10,8 @@ public struct LauncherView: View {
     @FocusState private var searchFocused: Bool
     @State private var renameTarget: Folder?
     @State private var renameText: String = ""
+    @State private var renameWorkflowTarget: Workflow?
+    @State private var renameWorkflowText: String = ""
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -41,6 +43,11 @@ public struct LauncherView: View {
         .alert("Rename Folder", isPresented: isRenaming) {
             TextField("Name", text: $renameText)
             Button("Save") { if let target = renameTarget { viewModel.renameFolder(target.id, to: renameText) } }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Rename Workflow", isPresented: isRenamingWorkflow) {
+            TextField("Name", text: $renameWorkflowText)
+            Button("Save") { if let target = renameWorkflowTarget { viewModel.renameWorkflow(target.id, to: renameWorkflowText) } }
             Button("Cancel", role: .cancel) {}
         }
     }
@@ -86,6 +93,14 @@ public struct LauncherView: View {
             LazyVGrid(columns: columns, spacing: Config.gridSpacing) {
                 ForEach(viewModel.rootEntries) { entry in
                     switch entry {
+                    case .workflow(let workflow):
+                        WorkflowGridItemView(
+                            workflow: workflow,
+                            iconSize: iconSize,
+                            hideTitle: settings.hideTitles,
+                            theme: settings.theme
+                        ) { viewModel.runWorkflow(workflow.id) }
+                        .contextMenu { workflowMenu(workflow) }
                     case .folder(let folder):
                         FolderGridItemView(
                             folder: folder,
@@ -136,7 +151,22 @@ public struct LauncherView: View {
                     }
                 }
             }
+            Divider()
+            Menu("Add to Workflow") {
+                Button("New Workflow…") { startNewWorkflow(with: app) }
+                if !viewModel.workflows.isEmpty { Divider() }
+                ForEach(viewModel.workflows) { workflow in
+                    Button(workflow.name) { viewModel.addApp(app, toWorkflow: workflow.id) }
+                }
+            }
         }
+    }
+
+    @ViewBuilder
+    private func workflowMenu(_ workflow: Workflow) -> some View {
+        Button("Run") { viewModel.runWorkflow(workflow.id) }
+        Button("Rename…") { renameWorkflowText = workflow.name; renameWorkflowTarget = workflow }
+        Button("Delete Workflow", role: .destructive) { viewModel.deleteWorkflow(workflow.id) }
     }
 
     @ViewBuilder
@@ -155,8 +185,20 @@ public struct LauncherView: View {
         }
     }
 
+    private func startNewWorkflow(with app: AppItem) {
+        let id = viewModel.createWorkflow(named: "New Workflow", with: app.id)
+        if let workflow = viewModel.workflow(id: id) {
+            renameWorkflowText = workflow.name
+            renameWorkflowTarget = workflow
+        }
+    }
+
     private var isRenaming: Binding<Bool> {
         Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })
+    }
+
+    private var isRenamingWorkflow: Binding<Bool> {
+        Binding(get: { renameWorkflowTarget != nil }, set: { if !$0 { renameWorkflowTarget = nil } })
     }
 }
 #endif

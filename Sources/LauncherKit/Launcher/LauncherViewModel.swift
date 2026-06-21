@@ -23,22 +23,79 @@ public final class LauncherViewModel {
     /// Called whenever settings change (e.g. so the wallpaper engine can re-render).
     public var onSettingsChange: (AppSettings) -> Void = { _ in }
 
+    /// The user's workflows ("launch many at once" presets), persisted.
+    public private(set) var workflows: [Workflow]
+
     private let launcher: AppLaunching
     private let folderStore: FolderStoring
     private let settingsStore: SettingsStoring
+    private let workflowStore: WorkflowStoring
+    private let workflowRunner: WorkflowRunner
 
     public init(
         apps: [AppItem],
         launcher: AppLaunching,
         folderStore: FolderStoring = FolderStore(),
-        settingsStore: SettingsStoring = SettingsStore()
+        settingsStore: SettingsStoring = SettingsStore(),
+        workflowStore: WorkflowStoring = WorkflowStore(),
+        workflowRunner: WorkflowRunner = WorkflowRunner()
     ) {
         self.allApps = apps
         self.launcher = launcher
         self.folderStore = folderStore
         self.settingsStore = settingsStore
+        self.workflowStore = workflowStore
+        self.workflowRunner = workflowRunner
         self.folderList = folderStore.load()
         self.settings = settingsStore.load()
+        self.workflows = workflowStore.load()
+    }
+
+    // MARK: - Workflows
+
+    @discardableResult
+    public func createWorkflow(named name: String, with appID: AppItem.ID? = nil) -> Workflow.ID {
+        let workflow = Workflow(name: name, appIDs: appID.map { [$0] } ?? [])
+        workflows.append(workflow)
+        persistWorkflows()
+        return workflow.id
+    }
+
+    public func renameWorkflow(_ id: Workflow.ID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        mutateWorkflow(id) { $0.renamed(to: trimmed) }
+    }
+
+    public func addApp(_ app: AppItem, toWorkflow id: Workflow.ID) {
+        mutateWorkflow(id) { $0.addingApp(app.id) }
+    }
+
+    public func deleteWorkflow(_ id: Workflow.ID) {
+        workflows.removeAll { $0.id == id }
+        persistWorkflows()
+    }
+
+    public func workflow(id: Workflow.ID) -> Workflow? {
+        workflows.first { $0.id == id }
+    }
+
+    /// Run a workflow: opens all its apps and paths, then dismisses the launcher.
+    public func runWorkflow(_ id: Workflow.ID) {
+        guard let workflow = workflow(id: id) else { return }
+        let result = workflowRunner.run(workflow, apps: allApps)
+        if result.failed > 0 { lastError = "Workflow '\(workflow.name)': \(result.failed) item(s) failed to open" }
+        onClose()
+    }
+
+    private func mutateWorkflow(_ id: Workflow.ID, _ transform: (Workflow) -> Workflow) {
+        workflows = workflows.map { $0.id == id ? transform($0) : $0 }
+        persistWorkflows()
+    }
+
+    private func persistWorkflows() {
+        do { try workflowStore.save(workflows) }
+        catch { lastError = "Couldn't save workflows: \(error.localizedDescription)" }
     }
 
     // MARK: - Settings
@@ -72,9 +129,11 @@ public final class LauncherViewModel {
     public var folders: [Folder] { folderList.folders }
     public var looseApps: [AppItem] { folderList.looseApps(from: allApps) }
 
-    /// The root grid: folders first, then apps that aren't in any folder.
+    /// The root grid: workflows, then folders, then apps that aren't in any folder.
     public var rootEntries: [LauncherGridEntry] {
-        folders.map(LauncherGridEntry.folder) + looseApps.map(LauncherGridEntry.app)
+        workflows.map(LauncherGridEntry.workflow)
+            + folders.map(LauncherGridEntry.folder)
+            + looseApps.map(LauncherGridEntry.app)
     }
 
     public var openFolder: Folder? {

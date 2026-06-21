@@ -69,6 +69,7 @@ public final class AppEnvironment {
             iconSize: viewModel.settings.iconSize,
             hideTitles: viewModel.settings.hideTitles,
             wallpaper: viewModel.settings.wallpaper?.id,
+            workflowCount: viewModel.workflows.count,
             lastError: viewModel.lastError
         )
     }
@@ -119,6 +120,25 @@ public final class AppEnvironment {
             ))
             let s = viewModel.settings
             return DebugResult(ok: true, message: "theme=\(s.theme.rawValue) iconSize=\(Int(s.iconSize)) hideTitles=\(s.hideTitles)")
+        case "create-workflow":
+            let id = viewModel.createWorkflow(named: command.name ?? "Workflow")
+            // Seed with apps matched by bundleID or name from the `apps` array.
+            for needle in command.apps ?? [] {
+                if let app = viewModel.allApps.first(where: { $0.bundleID == needle || $0.id == needle || $0.name.localizedCaseInsensitiveContains(needle) }) {
+                    viewModel.addApp(app, toWorkflow: id)
+                }
+            }
+            let count = viewModel.workflow(id: id)?.itemCount ?? 0
+            return DebugResult(ok: true, message: "workflow \(id) with \(count) item(s)")
+        case "run-workflow":
+            guard let workflow = viewModel.workflows.first(where: { $0.name.localizedCaseInsensitiveContains(command.name ?? command.q ?? "") }) else {
+                return DebugResult(ok: false, message: "workflow not found")
+            }
+            viewModel.runWorkflow(workflow.id)
+            return DebugResult(ok: true, message: "ran \(workflow.name)")
+        case "clear-workflows":
+            for workflow in viewModel.workflows { viewModel.deleteWorkflow(workflow.id) }
+            return DebugResult(ok: true, message: "cleared")
         default:
             return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")
         }
