@@ -40,6 +40,9 @@ public final class LauncherViewModel {
     /// User's custom ordering of root entries (entry ids); empty means default order.
     public private(set) var layoutOrder: [String]
 
+    /// Clipboard history (most recent first).
+    public private(set) var clipboardItems: [ClipboardItem]
+
     private let launcher: AppLaunching
     private let folderStore: FolderStoring
     private let settingsStore: SettingsStoring
@@ -48,6 +51,7 @@ public final class LauncherViewModel {
     private let widgetStore: WidgetStoring
     private let spaceStore: SpaceStoring
     private let layoutStore: LayoutStoring
+    private let clipboardStore: ClipboardStoring
 
     public init(
         apps: [AppItem],
@@ -58,7 +62,8 @@ public final class LauncherViewModel {
         workflowRunner: WorkflowRunner = WorkflowRunner(),
         widgetStore: WidgetStoring = WidgetStore(),
         spaceStore: SpaceStoring = SpaceStore(),
-        layoutStore: LayoutStoring = LayoutStore()
+        layoutStore: LayoutStoring = LayoutStore(),
+        clipboardStore: ClipboardStoring = ClipboardStore()
     ) {
         self.allApps = apps
         self.launcher = launcher
@@ -69,6 +74,8 @@ public final class LauncherViewModel {
         self.widgetStore = widgetStore
         self.spaceStore = spaceStore
         self.layoutStore = layoutStore
+        self.clipboardStore = clipboardStore
+        self.clipboardItems = clipboardStore.load()
         self.folderList = folderStore.load()
         self.settings = settingsStore.load()
         self.workflows = workflowStore.load()
@@ -388,6 +395,27 @@ public final class LauncherViewModel {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    // MARK: - Clipboard
+
+    /// Record newly copied text (most recent first; de-dupes the latest, caps history).
+    public func recordClipboard(_ text: String) {
+        if clipboardItems.first?.text == text { return }
+        var items = [ClipboardItem(text: text)] + clipboardItems.filter { $0.text != text }
+        if items.count > Config.clipboardHistoryLimit { items = Array(items.prefix(Config.clipboardHistoryLimit)) }
+        clipboardItems = items
+        persistClipboard()
+    }
+
+    public func clearClipboard() {
+        clipboardItems = []
+        persistClipboard()
+    }
+
+    private func persistClipboard() {
+        do { try clipboardStore.save(clipboardItems) }
+        catch { lastError = "Couldn't save clipboard: \(error.localizedDescription)" }
     }
 
     /// Open a user-added file/folder (reuses the workflow runner's URL opener).

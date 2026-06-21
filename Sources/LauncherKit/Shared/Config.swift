@@ -19,6 +19,14 @@ public enum Config {
     public static let workflowsFileName = "workflows.json"
     public static let widgetsFileName = "widgets.json"
     public static let layoutFileName = "layout.json"
+    public static let clipboardFileName = "clipboard.json"
+
+    // Clipboard manager.
+    public static let clipboardHistoryLimit = 50
+    public static let clipboardPollInterval: TimeInterval = 1
+
+    // File search (Spotlight via mdfind).
+    public static let fileSearchLimit = 12
 
     // Adjustable icon size range (Preferences slider / Spaces).
     public static let iconSizeRange: ClosedRange<Double> = 40...128

@@ -13,6 +13,7 @@ public final class AppEnvironment {
     private let preferences: PreferencesWindowController
     private var hotKey: GlobalHotKey?
     private var hotCorners: HotCorners?
+    private var clipboardMonitor: ClipboardMonitor?
     private var debugBridge: DebugBridge?
     private var currentHotKeyCode: UInt32 = 0
     private var currentHotKeyModifiers: UInt32 = 0
@@ -46,6 +47,11 @@ public final class AppEnvironment {
 
         // Summon hotkey (user-configurable). Falls back to the menu-bar item if registration fails.
         registerHotKey(viewModel.settings)
+
+        // Clipboard history monitor.
+        if viewModel.settings.clipboardEnabled {
+            clipboardMonitor = ClipboardMonitor { [weak self] text in self?.viewModel.recordClipboard(text) }
+        }
 
         if DebugBridge.isEnabled() {
             startDebugBridge()

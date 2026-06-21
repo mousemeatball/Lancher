@@ -18,7 +18,10 @@ public struct LauncherView: View {
     @State private var newSpaceText: String = ""
     @State private var draggingID: String?
     @State private var dropTargetFolderID: Folder.ID?
-    @State private var showCategories = false
+    @State private var tab: LauncherTab = .apps
+    @State private var fileResults: [URL] = []
+
+    private enum LauncherTab { case apps, categories, clipboard }
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -53,13 +56,14 @@ public struct LauncherView: View {
                 searchField
                 if let result = viewModel.calculatorResult { calculatorRow(result) }
                 if !viewModel.isSearching && viewModel.openFolder == nil {
-                    Picker("", selection: $showCategories) {
-                        Text("Apps").tag(false)
-                        Text("Categories").tag(true)
+                    Picker("", selection: $tab) {
+                        Text("Apps").tag(LauncherTab.apps)
+                        Text("Categories").tag(LauncherTab.categories)
+                        Text("Clipboard").tag(LauncherTab.clipboard)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 240)
+                    .frame(width: 320)
                 }
                 if let folder = viewModel.openFolder { folderHeader(folder) }
                 grid
@@ -139,14 +143,94 @@ public struct LauncherView: View {
     @ViewBuilder
     private var grid: some View {
         if viewModel.isSearching {
-            appGrid(viewModel.filteredApps, inFolder: nil)
+            searchResultsView
         } else if let folder = viewModel.openFolder {
             appGrid(viewModel.apps(inFolder: folder.id), inFolder: folder.id)
-        } else if showCategories {
+        } else if tab == .categories {
             categoriesView
+        } else if tab == .clipboard {
+            clipboardView
         } else {
             rootGrid
         }
+    }
+
+    private var searchResultsView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Config.contentPadding) {
+                LazyVGrid(columns: columns, spacing: Config.gridSpacing) {
+                    ForEach(viewModel.filteredApps) { app in appTile(app, inFolder: nil) }
+                }
+                .padding(.horizontal, Config.contentPadding)
+
+                if !fileResults.isEmpty {
+                    Text("Files").font(.headline).foregroundStyle(.white.opacity(0.85))
+                        .padding(.horizontal, Config.contentPadding)
+                    VStack(spacing: 6) {
+                        ForEach(fileResults, id: \.self) { url in fileResultRow(url) }
+                    }
+                    .padding(.horizontal, Config.contentPadding)
+                }
+            }
+        }
+        .task(id: viewModel.query) {
+            fileResults = await FileSearchService.search(viewModel.query)
+        }
+    }
+
+    private func fileResultRow(_ url: URL) -> some View {
+        Button { NSWorkspace.shared.open(url); onDismiss() } label: {
+            HStack(spacing: 10) {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                    .resizable().frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(url.lastPathComponent).foregroundStyle(.white).lineLimit(1)
+                    Text(url.deletingLastPathComponent().path).font(.caption2).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(8)
+            .frame(maxWidth: 620, alignment: .leading)
+            .themedPanel(settings.theme, cornerRadius: 8)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        }
+    }
+
+    private var clipboardView: some View {
+        ScrollView {
+            LazyVStack(spacing: 8) {
+                if viewModel.clipboardItems.isEmpty {
+                    Text("Clipboard history is empty — copy some text and it'll appear here.")
+                        .foregroundStyle(.white.opacity(0.7)).padding()
+                }
+                ForEach(viewModel.clipboardItems) { item in
+                    Button { copyToPasteboard(item.text) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: item.kind == .link ? "link" : "doc.on.clipboard")
+                            Text(item.preview).foregroundStyle(.white).lineLimit(2)
+                            Spacer()
+                        }
+                        .padding(12)
+                        .frame(maxWidth: 620, alignment: .leading)
+                        .themedPanel(settings.theme, cornerRadius: 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !viewModel.clipboardItems.isEmpty {
+                    Button("Clear Clipboard", role: .destructive) { viewModel.clearClipboard() }
+                        .padding(.top, 8)
+                }
+            }
+            .padding(.horizontal, Config.contentPadding)
+        }
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     private var categoriesView: some View {
