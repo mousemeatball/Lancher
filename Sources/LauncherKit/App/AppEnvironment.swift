@@ -10,7 +10,9 @@ import AppKit
 public final class AppEnvironment {
     private let viewModel: LauncherViewModel
     private let controller: LauncherWindowController
+    private let preferences: PreferencesWindowController
     private var hotKey: GlobalHotKey?
+    private var hotCorners: HotCorners?
     private var debugBridge: DebugBridge?
 
     public init(
@@ -18,8 +20,10 @@ public final class AppEnvironment {
         launcher: AppLaunching = WorkspaceAppLauncher()
     ) {
         let apps = discovery.discoverApps()
-        self.viewModel = LauncherViewModel(apps: apps, launcher: launcher)
+        let viewModel = LauncherViewModel(apps: apps, launcher: launcher)
+        self.viewModel = viewModel
         self.controller = LauncherWindowController(viewModel: viewModel)
+        self.preferences = PreferencesWindowController(viewModel: viewModel)
         Log.event(Log.app, "Lancher \(Config.version) launched — discovered \(apps.count) apps")
 
         // Summon from anywhere with ⌥Space. Falls back to the menu-bar item if registration fails.
@@ -29,6 +33,14 @@ public final class AppEnvironment {
         if hotKey == nil {
             Log.event(Log.app, "Failed to register ⌥Space hotkey — use the menu-bar item instead")
         }
+
+        // Hot-corner summon; kept in sync with settings.
+        let hotCorners = HotCorners { [weak self] in self?.summon() }
+        self.hotCorners = hotCorners
+        viewModel.onSettingsChange = { [weak self] settings in
+            self?.hotCorners?.update(enabled: settings.hotCornerEnabled, corner: settings.hotCorner)
+        }
+        hotCorners.update(enabled: viewModel.settings.hotCornerEnabled, corner: viewModel.settings.hotCorner)
 
         if DebugBridge.isEnabled() {
             startDebugBridge()
@@ -42,6 +54,16 @@ public final class AppEnvironment {
         // Honor schedule-based Space switching each time the launcher is summoned.
         viewModel.applyScheduledSpaceIfNeeded()
         controller.toggle()
+    }
+
+    /// Always-show summon (used by the hot corner).
+    private func summon() {
+        viewModel.applyScheduledSpaceIfNeeded()
+        controller.show()
+    }
+
+    public func showPreferences() {
+        preferences.show()
     }
 
     // MARK: - Debug Bridge

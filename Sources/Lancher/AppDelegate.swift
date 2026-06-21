@@ -26,6 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             action: #selector(openLauncher),
             keyEquivalent: ""
         )
+        menu.addItem(
+            withTitle: "Preferences…",
+            action: #selector(openPreferences),
+            keyEquivalent: ","
+        )
         menu.addItem(.separator())
         menu.addItem(
             withTitle: "Quit \(Config.appName)",
@@ -38,5 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openLauncher() {
         environment?.toggleLauncher()
+    }
+
+    @objc private func openPreferences() {
+        environment?.showPreferences()
     }
 }
