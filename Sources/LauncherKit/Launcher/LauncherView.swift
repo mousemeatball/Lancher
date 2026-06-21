@@ -16,6 +16,7 @@ public struct LauncherView: View {
     @State private var isNamingSpace = false
     @State private var newSpaceText: String = ""
     @State private var draggingID: String?
+    @State private var dropTargetFolderID: Folder.ID?
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -125,9 +126,11 @@ public struct LauncherView: View {
                             return NSItemProvider(object: entry.id as NSString)
                         }
                         .onDrop(of: [.text], delegate: GridReorderDelegate(
-                            targetID: entry.id,
+                            targetEntry: entry,
                             draggingID: $draggingID,
-                            onMove: { id, target in viewModel.moveEntry(id, before: target) }
+                            dropTargetFolderID: $dropTargetFolderID,
+                            onReorder: { id, target in viewModel.moveEntry(id, before: target) },
+                            onDropIntoFolder: { appID, folderID in viewModel.dropEntry(appID, intoFolder: folderID) }
                         ))
                 }
             }
@@ -154,6 +157,12 @@ public struct LauncherView: View {
                 iconSize: iconSize,
                 hideTitle: settings.hideTitles
             ) { viewModel.openFolder(folder.id) }
+            .overlay(
+                RoundedRectangle(cornerRadius: Config.folderTileCornerRadius)
+                    .strokeBorder(Color.accentColor, lineWidth: 3)
+                    .padding(.bottom, settings.hideTitles ? 0 : 22)
+                    .opacity(dropTargetFolderID == folder.id ? 1 : 0)
+            )
             .contextMenu { folderMenu(folder) }
         case .app(let app):
             appTile(app, inFolder: nil)

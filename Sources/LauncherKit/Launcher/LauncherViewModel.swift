@@ -312,6 +312,15 @@ public final class LauncherViewModel {
         apply(folderList.addingApp(app.id, toFolder: id))
     }
 
+    /// Drop a dragged grid entry ("app:<id>") into a folder. Ignores non-app entries.
+    public func dropEntry(_ entryID: String, intoFolder folderID: Folder.ID) {
+        let prefix = "app:"
+        guard entryID.hasPrefix(prefix) else { return }
+        let appID = String(entryID.dropFirst(prefix.count))
+        guard let app = allApps.first(where: { $0.id == appID }) else { return }
+        addApp(app, toFolder: folderID)
+    }
+
     public func removeApp(_ app: AppItem, fromFolder id: Folder.ID) {
         apply(folderList.removingApp(app.id, fromFolder: id))
     }

@@ -48,4 +48,20 @@ private final class MemLayout: LayoutStoring, @unchecked Sendable { var o: [Stri
         vm.moveEntry("app:Beta", before: "app:Beta")
         #expect(vm.rootEntries.map(\.id) == ["app:Alpha", "app:Beta", "app:Gamma"])
     }
+
+    @Test func droppingAppOntoFolderAddsItToTheFolder() {
+        let vm = makeVM(MemLayout())
+        let folderID = vm.createFolder(named: "Stuff")          // empty folder
+        #expect(vm.looseApps.count == 3)
+        vm.dropEntry("app:Beta", intoFolder: folderID)
+        #expect(vm.apps(inFolder: folderID).map(\.name) == ["Beta"])
+        #expect(vm.looseApps.map(\.name) == ["Alpha", "Gamma"])  // Beta left the loose grid
+    }
+
+    @Test func droppingNonAppEntryIntoFolderIsIgnored() {
+        let vm = makeVM(MemLayout())
+        let folderID = vm.createFolder(named: "Stuff")
+        vm.dropEntry("folder:whatever", intoFolder: folderID)
+        #expect(vm.apps(inFolder: folderID).isEmpty)
+    }
 }
