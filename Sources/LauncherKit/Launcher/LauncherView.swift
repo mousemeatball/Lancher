@@ -1,5 +1,6 @@
 #if canImport(SwiftUI) && canImport(AppKit)
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The full-screen launcher: a centered search field above a scrolling grid. The grid shows search
 /// results while searching, the contents of an open folder when one is drilled into, or the root
@@ -14,6 +15,7 @@ public struct LauncherView: View {
     @State private var renameWorkflowText: String = ""
     @State private var isNamingSpace = false
     @State private var newSpaceText: String = ""
+    @State private var draggingID: String?
 
     public init(viewModel: LauncherViewModel, onDismiss: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -116,29 +118,45 @@ public struct LauncherView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: Config.gridSpacing) {
                 ForEach(viewModel.rootEntries) { entry in
-                    switch entry {
-                    case .workflow(let workflow):
-                        WorkflowGridItemView(
-                            workflow: workflow,
-                            iconSize: iconSize,
-                            hideTitle: settings.hideTitles,
-                            theme: settings.theme
-                        ) { viewModel.runWorkflow(workflow.id) }
-                        .contextMenu { workflowMenu(workflow) }
-                    case .folder(let folder):
-                        FolderGridItemView(
-                            folder: folder,
-                            previewApps: viewModel.previewApps(for: folder),
-                            iconSize: iconSize,
-                            hideTitle: settings.hideTitles
-                        ) { viewModel.openFolder(folder.id) }
-                        .contextMenu { folderMenu(folder) }
-                    case .app(let app):
-                        appTile(app, inFolder: nil)
-                    }
+                    entryView(entry)
+                        .opacity(draggingID == entry.id ? 0.4 : 1)
+                        .onDrag {
+                            draggingID = entry.id
+                            return NSItemProvider(object: entry.id as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: GridReorderDelegate(
+                            targetID: entry.id,
+                            draggingID: $draggingID,
+                            onMove: { id, target in viewModel.moveEntry(id, before: target) }
+                        ))
                 }
             }
             .padding(.horizontal, Config.contentPadding)
+            .animation(.default, value: viewModel.rootEntries.map(\.id))
+        }
+    }
+
+    @ViewBuilder
+    private func entryView(_ entry: LauncherGridEntry) -> some View {
+        switch entry {
+        case .workflow(let workflow):
+            WorkflowGridItemView(
+                workflow: workflow,
+                iconSize: iconSize,
+                hideTitle: settings.hideTitles,
+                theme: settings.theme
+            ) { viewModel.runWorkflow(workflow.id) }
+            .contextMenu { workflowMenu(workflow) }
+        case .folder(let folder):
+            FolderGridItemView(
+                folder: folder,
+                previewApps: viewModel.previewApps(for: folder),
+                iconSize: iconSize,
+                hideTitle: settings.hideTitles
+            ) { viewModel.openFolder(folder.id) }
+            .contextMenu { folderMenu(folder) }
+        case .app(let app):
+            appTile(app, inFolder: nil)
         }
     }
 

@@ -18,6 +18,7 @@ public enum Config {
     public static let spacesFileName = "spaces.json"
     public static let workflowsFileName = "workflows.json"
     public static let widgetsFileName = "widgets.json"
+    public static let layoutFileName = "layout.json"
 
     // Adjustable icon size range (Preferences slider / Spaces).
     public static let iconSizeRange: ClosedRange<Double> = 40...128

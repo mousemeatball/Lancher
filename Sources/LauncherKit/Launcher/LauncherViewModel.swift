@@ -37,6 +37,9 @@ public final class LauncherViewModel {
     public private(set) var spaces: [Space]
     public private(set) var activeSpaceID: Space.ID?
 
+    /// User's custom ordering of root entries (entry ids); empty means default order.
+    public private(set) var layoutOrder: [String]
+
     private let launcher: AppLaunching
     private let folderStore: FolderStoring
     private let settingsStore: SettingsStoring
@@ -44,6 +47,7 @@ public final class LauncherViewModel {
     private let workflowRunner: WorkflowRunner
     private let widgetStore: WidgetStoring
     private let spaceStore: SpaceStoring
+    private let layoutStore: LayoutStoring
 
     public init(
         apps: [AppItem],
@@ -53,7 +57,8 @@ public final class LauncherViewModel {
         workflowStore: WorkflowStoring = WorkflowStore(),
         workflowRunner: WorkflowRunner = WorkflowRunner(),
         widgetStore: WidgetStoring = WidgetStore(),
-        spaceStore: SpaceStoring = SpaceStore()
+        spaceStore: SpaceStoring = SpaceStore(),
+        layoutStore: LayoutStoring = LayoutStore()
     ) {
         self.allApps = apps
         self.launcher = launcher
@@ -63,6 +68,7 @@ public final class LauncherViewModel {
         self.workflowRunner = workflowRunner
         self.widgetStore = widgetStore
         self.spaceStore = spaceStore
+        self.layoutStore = layoutStore
         self.folderList = folderStore.load()
         self.settings = settingsStore.load()
         self.workflows = workflowStore.load()
@@ -70,6 +76,25 @@ public final class LauncherViewModel {
         let spacesData = spaceStore.load()
         self.spaces = spacesData.spaces
         self.activeSpaceID = spacesData.activeID
+        self.layoutOrder = layoutStore.load()
+    }
+
+    // MARK: - Custom layout (drag to rearrange)
+
+    /// Move the entry with `id` to just before `targetID` in the root grid, and persist the order.
+    public func moveEntry(_ id: String, before targetID: String) {
+        guard id != targetID else { return }
+        var ids = rootEntries.map(\.id)
+        guard let fromIndex = ids.firstIndex(of: id) else { return }
+        let moved = ids.remove(at: fromIndex)
+        if let toIndex = ids.firstIndex(of: targetID) {
+            ids.insert(moved, at: toIndex)
+        } else {
+            ids.append(moved)
+        }
+        layoutOrder = ids
+        do { try layoutStore.save(ids) }
+        catch { lastError = "Couldn't save layout: \(error.localizedDescription)" }
     }
 
     // MARK: - Spaces
@@ -225,11 +250,24 @@ public final class LauncherViewModel {
     public var folders: [Folder] { folderList.folders }
     public var looseApps: [AppItem] { folderList.looseApps(from: allApps) }
 
-    /// The root grid: workflows, then folders, then apps that aren't in any folder.
+    /// The root grid. Default order is workflows, then folders, then loose apps; if the user has a
+    /// custom `layoutOrder`, entries are sorted by it (unknown/new entries keep default order and
+    /// are appended after known ones).
     public var rootEntries: [LauncherGridEntry] {
-        workflows.map(LauncherGridEntry.workflow)
+        let base = workflows.map(LauncherGridEntry.workflow)
             + folders.map(LauncherGridEntry.folder)
             + looseApps.map(LauncherGridEntry.app)
+        guard !layoutOrder.isEmpty else { return base }
+
+        let rank = Dictionary(uniqueKeysWithValues: layoutOrder.enumerated().map { ($1, $0) })
+        return base.enumerated().sorted { lhs, rhs in
+            switch (rank[lhs.element.id], rank[rhs.element.id]) {
+            case let (l?, r?): return l < r
+            case (_?, nil): return true       // known entries before unknown
+            case (nil, _?): return false
+            case (nil, nil): return lhs.offset < rhs.offset   // preserve default order
+            }
+        }.map(\.element)
     }
 
     public var openFolder: Folder? {
