@@ -70,6 +70,7 @@ public final class AppEnvironment {
             hideTitles: viewModel.settings.hideTitles,
             wallpaper: viewModel.settings.wallpaper?.id,
             workflowCount: viewModel.workflows.count,
+            widgetCount: viewModel.widgets.count,
             lastError: viewModel.lastError
         )
     }
@@ -146,6 +147,17 @@ public final class AppEnvironment {
             viewModel.updateSettings(viewModel.settings.with(wallpaper: .some(spec)))
             controller.show()
             return DebugResult(ok: true, message: "wallpaper=\(spec?.id ?? "none")")
+        case "add-widget":
+            guard let kind = command.kind.flatMap(WidgetSpec.Kind.init(rawValue:)) else {
+                return DebugResult(ok: false, message: "unknown widget kind")
+            }
+            let corner = command.name.flatMap(WidgetSpec.Corner.init(rawValue:)) ?? .topTrailing
+            viewModel.addWidget(kind: kind, corner: corner, text: command.value)
+            controller.show()
+            return DebugResult(ok: true, message: "\(kind.rawValue) @ \(corner.rawValue) (\(viewModel.widgets.count) total)")
+        case "clear-widgets":
+            viewModel.clearWidgets()
+            return DebugResult(ok: true, message: "cleared")
         default:
             return DebugResult(ok: false, message: "unknown command '\(command.cmd)'")
         }

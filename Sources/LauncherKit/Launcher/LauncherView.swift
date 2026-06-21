@@ -41,6 +41,8 @@ public struct LauncherView: View {
                 grid
             }
             .padding(Config.contentPadding)
+
+            WidgetHostView(widgets: viewModel.widgets, theme: settings.theme)
         }
         .onAppear { searchFocused = true }
         .alert("Rename Folder", isPresented: isRenaming) {

@@ -30,11 +30,15 @@ public final class LauncherViewModel {
     /// The user's workflows ("launch many at once" presets), persisted.
     public private(set) var workflows: [Workflow]
 
+    /// The user's corner widgets, persisted.
+    public private(set) var widgets: [WidgetSpec]
+
     private let launcher: AppLaunching
     private let folderStore: FolderStoring
     private let settingsStore: SettingsStoring
     private let workflowStore: WorkflowStoring
     private let workflowRunner: WorkflowRunner
+    private let widgetStore: WidgetStoring
 
     public init(
         apps: [AppItem],
@@ -42,7 +46,8 @@ public final class LauncherViewModel {
         folderStore: FolderStoring = FolderStore(),
         settingsStore: SettingsStoring = SettingsStore(),
         workflowStore: WorkflowStoring = WorkflowStore(),
-        workflowRunner: WorkflowRunner = WorkflowRunner()
+        workflowRunner: WorkflowRunner = WorkflowRunner(),
+        widgetStore: WidgetStoring = WidgetStore()
     ) {
         self.allApps = apps
         self.launcher = launcher
@@ -50,9 +55,36 @@ public final class LauncherViewModel {
         self.settingsStore = settingsStore
         self.workflowStore = workflowStore
         self.workflowRunner = workflowRunner
+        self.widgetStore = widgetStore
         self.folderList = folderStore.load()
         self.settings = settingsStore.load()
         self.workflows = workflowStore.load()
+        self.widgets = widgetStore.load()
+    }
+
+    // MARK: - Widgets
+
+    @discardableResult
+    public func addWidget(kind: WidgetSpec.Kind, corner: WidgetSpec.Corner = .topTrailing, text: String? = nil) -> WidgetSpec.ID {
+        let widget = WidgetSpec(kind: kind, corner: corner, text: text)
+        widgets.append(widget)
+        persistWidgets()
+        return widget.id
+    }
+
+    public func removeWidget(_ id: WidgetSpec.ID) {
+        widgets.removeAll { $0.id == id }
+        persistWidgets()
+    }
+
+    public func clearWidgets() {
+        widgets.removeAll()
+        persistWidgets()
+    }
+
+    private func persistWidgets() {
+        do { try widgetStore.save(widgets) }
+        catch { lastError = "Couldn't save widgets: \(error.localizedDescription)" }
     }
 
     // MARK: - Workflows

@@ -18,6 +18,7 @@ public struct DebugState: Codable, Sendable {
     public var wallpaper: String?
     public var activeSpace: String?
     public var workflowCount: Int?
+    public var widgetCount: Int?
     public var lastError: String?
 
     public init(
@@ -36,6 +37,7 @@ public struct DebugState: Codable, Sendable {
         wallpaper: String? = nil,
         activeSpace: String? = nil,
         workflowCount: Int? = nil,
+        widgetCount: Int? = nil,
         lastError: String?
     ) {
         self.app = app
@@ -53,6 +55,7 @@ public struct DebugState: Codable, Sendable {
         self.wallpaper = wallpaper
         self.activeSpace = activeSpace
         self.workflowCount = workflowCount
+        self.widgetCount = widgetCount
         self.lastError = lastError
     }
 
